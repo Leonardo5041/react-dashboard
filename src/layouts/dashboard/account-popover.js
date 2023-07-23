@@ -8,11 +8,13 @@ export const AccountPopover = (props) => {
   const { anchorEl, onClose, open } = props;
   const router = useRouter();
   const auth = useAuth();
+  const user = auth?.user;
 
   const handleSignOut = useCallback(
     () => {
       onClose?.();
       auth.signOut();
+      localStorage.removeItem('token');
       router.push('/auth/login');
     },
     [onClose, auth, router]
@@ -36,13 +38,13 @@ export const AccountPopover = (props) => {
         }}
       >
         <Typography variant="overline">
-          Account
+          Mi cuenta
         </Typography>
         <Typography
           color="text.secondary"
           variant="body2"
         >
-          Anika Visser
+          {user?.name}
         </Typography>
       </Box>
       <Divider />
@@ -57,7 +59,7 @@ export const AccountPopover = (props) => {
         }}
       >
         <MenuItem onClick={handleSignOut}>
-          Sign out
+          Cerrar sesión
         </MenuItem>
       </MenuList>
     </Popover>

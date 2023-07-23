@@ -17,41 +17,62 @@ import {
 } from '@mui/material';
 import { Scrollbar } from 'src/components/scrollbar';
 import { SeverityPill } from 'src/components/severity-pill';
+import { useRouter } from 'next/router';
 
-const statusMap = {
-  pending: 'warning',
-  delivered: 'success',
-  refunded: 'error'
+
+const getStatusLabel = (endDate) => {
+  const date = new Date(endDate);
+
+  if (date > new Date()) {
+    return 'Activa';
+  }
+
+  return 'Expirada';
+}
+
+const getStatusColor = (endDate) => {
+  const date = new Date(endDate);
+  if (date > new Date()) {
+    return 'success';
+  }
+  else {
+    return 'error';
+  }
 };
 
 export const OverviewLatestOrders = (props) => {
+  const router = useRouter();
   const { orders = [], sx } = props;
 
   return (
     <Card sx={sx}>
-      <CardHeader title="Latest Orders" />
+      <CardHeader title="Subscripciones" />
       <Scrollbar sx={{ flexGrow: 1 }}>
         <Box sx={{ minWidth: 800 }}>
           <Table>
             <TableHead>
               <TableRow>
                 <TableCell>
-                  Order
+                  Subscripción
                 </TableCell>
                 <TableCell>
-                  Customer
+                  Cliente
                 </TableCell>
                 <TableCell sortDirection="desc">
-                  Date
+                  Fecha de inicio
+                </TableCell>
+                <TableCell sortDirection="desc">
+                  Fecha de fin
                 </TableCell>
                 <TableCell>
-                  Status
+                  Estado
                 </TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {orders.map((order) => {
-                const createdAt = format(order.createdAt, 'dd/MM/yyyy');
+                const createdAt = format(new Date(order.start_date), 'dd MMM, yyyy');
+                const expirationAt = format(new Date(order.end_date), 'dd MMM, yyyy');
 
                 return (
                   <TableRow
@@ -59,17 +80,20 @@ export const OverviewLatestOrders = (props) => {
                     key={order.id}
                   >
                     <TableCell>
-                      {order.ref}
+                      {order.membership.name}
                     </TableCell>
                     <TableCell>
-                      {order.customer.name}
+                      {order.client.name}
                     </TableCell>
                     <TableCell>
                       {createdAt}
                     </TableCell>
                     <TableCell>
-                      <SeverityPill color={statusMap[order.status]}>
-                        {order.status}
+                      {expirationAt}
+                    </TableCell>
+                    <TableCell>
+                      <SeverityPill color={getStatusColor(order?.end_date)}>
+                        { getStatusLabel(order?.end_date)}
                       </SeverityPill>
                     </TableCell>
                   </TableRow>
@@ -83,6 +107,7 @@ export const OverviewLatestOrders = (props) => {
       <CardActions sx={{ justifyContent: 'flex-end' }}>
         <Button
           color="inherit"
+          onClick={() => router.push('/customers')}
           endIcon={(
             <SvgIcon fontSize="small">
               <ArrowRightIcon />
@@ -91,7 +116,7 @@ export const OverviewLatestOrders = (props) => {
           size="small"
           variant="text"
         >
-          View all
+          Ver todo
         </Button>
       </CardActions>
     </Card>

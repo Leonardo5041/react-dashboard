@@ -1,5 +1,8 @@
 import { createContext, useContext, useEffect, useReducer, useRef } from 'react';
 import PropTypes from 'prop-types';
+import axios from 'axios';
+import { useRouter } from 'next/router';
+import { BACKEND_URL, getInitials } from 'src/utils/get-initials';
 
 const HANDLERS = {
   INITIALIZE: 'INITIALIZE',
@@ -13,10 +16,13 @@ const initialState = {
   user: null
 };
 
+const mapLoginStatus = {
+  400: 'Credenciales inválidas',
+}
+
 const handlers = {
   [HANDLERS.INITIALIZE]: (state, action) => {
     const user = action.payload;
-
     return {
       ...state,
       ...(
@@ -25,7 +31,7 @@ const handlers = {
           ? ({
             isAuthenticated: true,
             isLoading: false,
-            user
+            user: user
           })
           : ({
             isLoading: false
@@ -35,11 +41,10 @@ const handlers = {
   },
   [HANDLERS.SIGN_IN]: (state, action) => {
     const user = action.payload;
-
     return {
       ...state,
       isAuthenticated: true,
-      user
+      user: user
     };
   },
   [HANDLERS.SIGN_OUT]: (state) => {
@@ -57,41 +62,55 @@ const reducer = (state, action) => (
 
 // The role of this context is to propagate authentication state through the App tree.
 
-export const AuthContext = createContext({ undefined });
+export const AuthContext = createContext();
 
 export const AuthProvider = (props) => {
+  const router = useRouter();
   const { children } = props;
   const [state, dispatch] = useReducer(reducer, initialState);
   const initialized = useRef(false);
 
   const initialize = async () => {
-    // Prevent from calling twice in development mode with React.StrictMode enabled
+    let isAuthenticated;
+    const token = localStorage.getItem('token');
     if (initialized.current) {
       return;
     }
-
     initialized.current = true;
-
-    let isAuthenticated = false;
-
     try {
-      isAuthenticated = window.sessionStorage.getItem('authenticated') === 'true';
+      isAuthenticated = !!(token);
     } catch (err) {
       console.error(err);
     }
 
     if (isAuthenticated) {
+      try {
+        const {data} = await axios.get(`${BACKEND_URL}users/user`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       const user = {
-        id: '5e86809283e28b96d2d38537',
-        avatar: '/assets/avatars/avatar-anika-visser.png',
-        name: 'Anika Visser',
-        email: 'anika.visser@devias.io'
+        id: data?.id,
+        avatar: getInitials(data?.name) || '',
+        name: data?.name,
+        email: data?.email
       };
 
       dispatch({
         type: HANDLERS.INITIALIZE,
         payload: user
       });
+      } catch (err) {
+        if (axios.isAxiosError(err)) {
+          if (err.response.status === 401) {
+            window.sessionStorage.removeItem('authenticated');
+            localStorage.removeItem('token');
+            await router.push('/auth/login');
+            router.reload();
+          }
+        }
+      }
     } else {
       dispatch({
         type: HANDLERS.INITIALIZE
@@ -116,7 +135,7 @@ export const AuthProvider = (props) => {
 
     const user = {
       id: '5e86809283e28b96d2d38537',
-      avatar: '/assets/avatars/avatar-anika-visser.png',
+      avatar: '',
       name: 'Anika Visser',
       email: 'anika.visser@devias.io'
     };
@@ -128,21 +147,30 @@ export const AuthProvider = (props) => {
   };
 
   const signIn = async (email, password) => {
-    if (email !== 'demo@devias.io' || password !== 'Password123!') {
-      throw new Error('Please check your email and password');
-    }
+    //loadEnvVariables();
+  
+    const request = {
+      email,
+      password
+    }; 
+    const {data, status} = await axios.post(`${BACKEND_URL}users/login`, request);
 
+    if (status !== 201) {
+      const message = mapLoginStatus[status];
+      throw new Error(message);
+    }
     try {
       window.sessionStorage.setItem('authenticated', 'true');
+      localStorage.setItem('token', data?.token);
     } catch (err) {
       console.error(err);
     }
 
     const user = {
-      id: '5e86809283e28b96d2d38537',
-      avatar: '/assets/avatars/avatar-anika-visser.png',
-      name: 'Anika Visser',
-      email: 'anika.visser@devias.io'
+      id: data?.user?.id,
+      avatar: '',
+      name: data?.user?.name,
+      email: data?.user?.email
     };
 
     dispatch({

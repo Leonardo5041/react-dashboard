@@ -79,7 +79,7 @@ export const Layout = (props) => {
               }}
               variant="h1"
             >
-              Panel de Administración de {' '}
+              Bienvenido a {' '}
               <Box
                 component="a"
                 sx={{ color: '#15B79E' }}

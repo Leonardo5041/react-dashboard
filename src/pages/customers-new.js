@@ -3,37 +3,56 @@ import { useRouter } from 'next/navigation';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import { Box, Button, Stack, TextField, Typography } from '@mui/material';
-import { useAuth } from 'src/hooks/use-auth';
 import { Layout as DashboardLayout } from 'src/layouts/dashboard/layout';
+import axios from 'axios';
+import { BACKEND_URL } from 'src/utils/get-initials';
+
 const Page = () => {
   const router = useRouter();
-  const auth = useAuth();
+
+  const registerClient = async (data) => {
+    const { email, name, phone } = data;
+    const request = {
+      email: email.trim(),
+      name: name.trim(),
+      phone: phone.trim()
+    }
+    try {
+      const { data, status } = await axios.post(`${BACKEND_URL}clients`, request);
+      if (status === 201) {
+        router.push('/customers');
+      } else {
+        console.error(data);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const formik = useFormik({
     initialValues: {
       email: '',
       name: '',
-      password: '',
+      phone: '',
       submit: null
     },
     validationSchema: Yup.object({
       email: Yup
         .string()
         .email('El correo electrónico debe ser una dirección de correo electrónico válida')
-        .max(255)
-        .required('Correo electrónico es requerido'),
+        .max(255),
       name: Yup
         .string()
         .max(255)
         .required('Nombre es requerido'),
-      password: Yup
+      phone: Yup
         .string()
         .max(255)
-        .required('Contraseña es requerida')
+        .required('Numero de telefono es requerido')
     }),
     onSubmit: async (values, helpers) => {
       try {
-        await auth.signUp(values.email, values.name, values.password);
-        router.push('/');
+        await registerClient(values);
       } catch (err) {
         helpers.setStatus({ success: false });
         helpers.setErrors({ submit: err.message });
@@ -46,7 +65,7 @@ const Page = () => {
     <>
       <Head>
         <title>
-          Registrar Administrador | Pitbulls Gym
+          Registrar Cliente | Pitbulls Gym
         </title>
       </Head>
       <Box
@@ -71,7 +90,7 @@ const Page = () => {
               sx={{ mb: 3 }}
             >
               <Typography variant="h4">
-                Registrar Administrador
+                Registrar Nuevo Cliente
               </Typography>
             </Stack>
             <form
@@ -82,6 +101,7 @@ const Page = () => {
                 <TextField
                   error={!!(formik.touched.name && formik.errors.name)}
                   fullWidth
+                  required
                   helperText={formik.touched.name && formik.errors.name}
                   label="Nombre"
                   name="name"
@@ -90,26 +110,27 @@ const Page = () => {
                   value={formik.values.name}
                 />
                 <TextField
+                  error={!!(formik.touched.phone && formik.errors.phone)}
+                  fullWidth
+                  helperText={formik.touched.phone && formik.errors.phone}
+                  label="Telefono"
+                  name="phone"
+                  required
+                  onBlur={formik.handleBlur}
+                  onChange={formik.handleChange}
+                  type="text"
+                  value={formik.values.password}
+                />
+                <TextField
                   error={!!(formik.touched.email && formik.errors.email)}
                   fullWidth
                   helperText={formik.touched.email && formik.errors.email}
-                  label="Correo electrónico"
+                  label="Correo Electronico (Opcional)"
                   name="email"
                   onBlur={formik.handleBlur}
                   onChange={formik.handleChange}
                   type="email"
                   value={formik.values.email}
-                />
-                <TextField
-                  error={!!(formik.touched.password && formik.errors.password)}
-                  fullWidth
-                  helperText={formik.touched.password && formik.errors.password}
-                  label="Contraseña"
-                  name="password"
-                  onBlur={formik.handleBlur}
-                  onChange={formik.handleChange}
-                  type="password"
-                  value={formik.values.password}
                 />
               </Stack>
               {formik.errors.submit && (
@@ -128,7 +149,7 @@ const Page = () => {
                 type="submit"
                 variant="contained"
               >
-                Guardar Nuevo Administrador
+                Guardar
               </Button>
             </form>
           </div>

@@ -3,8 +3,8 @@ import { format } from 'date-fns';
 import {
   Avatar,
   Box,
+  Button,
   Card,
-  Checkbox,
   Stack,
   Table,
   TableBody,
@@ -12,28 +12,58 @@ import {
   TableHead,
   TablePagination,
   TableRow,
+  Tooltip,
   Typography
 } from '@mui/material';
 import { Scrollbar } from 'src/components/scrollbar';
 import { getInitials } from 'src/utils/get-initials';
+import { useRouter } from 'next/router';
+import { SeverityPill } from 'src/components/severity-pill';
+
+const getSubscriptionState = (endDate) => {
+  const now = new Date();
+  const isBefore = endDate ? now < new Date(endDate) : false;
+  return isBefore ? 'info' : 'warning';
+}
+
+const getStatusLabel = (endDate) => {
+  const date = new Date(endDate);
+
+  if (date > new Date()) {
+    return 'Membresia Activa';
+  }
+
+  return 'Membresia Inactiva';
+}
+
+const formatDate = (date) => {
+  if (!date) return 'No cuenta con una suscripción';
+  return `Fecha de termino: ${format(new Date(date), 'dd-MMM-yyyy')} `;
+}
+
+const getNumberClient = (clientNumber) => {
+  if (!clientNumber) return 'No cuenta con un numero de cliente';
+  return `Numero de cliente: ${clientNumber}`;
+}
 
 export const CustomersTable = (props) => {
+  const router = useRouter();
   const {
     count = 0,
     items = [],
-    onDeselectAll,
-    onDeselectOne,
-    onPageChange = () => {},
+    // onDeselectAll,
+    // onDeselectOne,
+    onPageChange = () => { },
     onRowsPerPageChange,
-    onSelectAll,
-    onSelectOne,
+    // onSelectAll,
+    // onSelectOne,
     page = 0,
     rowsPerPage = 0,
     selected = []
   } = props;
 
-  const selectedSome = (selected.length > 0) && (selected.length < items.length);
-  const selectedAll = (items.length > 0) && (selected.length === items.length);
+  // const selectedSome = (selected.length > 0) && (selected.length < items.length);
+  // const selectedAll = (items.length > 0) && (selected.length === items.length);
 
   return (
     <Card>
@@ -42,85 +72,82 @@ export const CustomersTable = (props) => {
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell padding="checkbox">
-                  <Checkbox
-                    checked={selectedAll}
-                    indeterminate={selectedSome}
-                    onChange={(event) => {
-                      if (event.target.checked) {
-                        onSelectAll?.();
-                      } else {
-                        onDeselectAll?.();
-                      }
-                    }}
-                  />
+                <TableCell>
+                  Nombre
                 </TableCell>
                 <TableCell>
-                  Name
+                  Telefono
                 </TableCell>
                 <TableCell>
-                  Email
+                  Estado del Cliente
                 </TableCell>
                 <TableCell>
-                  Location
+                  Estado de la subscripcion
                 </TableCell>
                 <TableCell>
-                  Phone
-                </TableCell>
-                <TableCell>
-                  Signed Up
+                  Acciones
                 </TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {items.map((customer) => {
                 const isSelected = selected.includes(customer.id);
-                const createdAt = format(customer.createdAt, 'dd/MM/yyyy');
-
                 return (
                   <TableRow
                     hover
-                    key={customer.id}
+                    key={customer?.id}
                     selected={isSelected}
                   >
-                    <TableCell padding="checkbox">
-                      <Checkbox
-                        checked={isSelected}
-                        onChange={(event) => {
-                          if (event.target.checked) {
-                            onSelectOne?.(customer.id);
-                          } else {
-                            onDeselectOne?.(customer.id);
-                          }
-                        }}
-                      />
-                    </TableCell>
                     <TableCell>
                       <Stack
                         alignItems="center"
                         direction="row"
                         spacing={2}
                       >
-                        <Avatar src={customer.avatar}>
-                          {getInitials(customer.name)}
-                        </Avatar>
+                        <Tooltip title={getNumberClient(customer.client_number)}>
+                          <Avatar src={customer.avatar}>
+                            {getInitials(customer.name)}
+                          </Avatar>
+                        </Tooltip>
                         <Typography variant="subtitle2">
                           {customer.name}
                         </Typography>
                       </Stack>
                     </TableCell>
                     <TableCell>
-                      {customer.email}
-                    </TableCell>
-                    <TableCell>
-                      {customer.address.city}, {customer.address.state}, {customer.address.country}
-                    </TableCell>
-                    <TableCell>
                       {customer.phone}
                     </TableCell>
                     <TableCell>
-                      {createdAt}
+                      <SeverityPill
+                        color={(customer?.active ? 'success' : 'error')} >
+                        {customer?.active ? 'Activo' : 'Inactivo'}
+                      </SeverityPill>
                     </TableCell>
+                    <Tooltip title={formatDate(customer?.subscription?.end_date)}>
+                      <TableCell>
+                        <SeverityPill
+                          color={(getSubscriptionState(customer?.subscription?.end_date))} >
+                          {getStatusLabel(customer?.subscription?.end_date)}
+                        </SeverityPill>
+
+                      </TableCell>
+                    </Tooltip>
+                    <TableCell>
+                      <Stack
+                        direction="row"
+                        spacing={2}
+                      >
+                        <Button
+                          onClick={() => router.push(`/customers/${customer.id}`)}
+                          size="small"
+                          sx={{ minWidth: 'auto' }}
+                          variant="contained"
+                        >
+                          Ver Detalles
+                        </Button>
+                      </Stack>
+                    </TableCell>
+
                   </TableRow>
                 );
               })}
@@ -135,7 +162,7 @@ export const CustomersTable = (props) => {
         onRowsPerPageChange={onRowsPerPageChange}
         page={page}
         rowsPerPage={rowsPerPage}
-        rowsPerPageOptions={[5, 10, 25]}
+        rowsPerPageOptions={[10, 20, 30]}
       />
     </Card>
   );

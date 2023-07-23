@@ -27,7 +27,7 @@ const App = (props) => {
     <CacheProvider value={emotionCache}>
       <Head>
         <title>
-          Devias Kit
+          Pitbulls Gym
         </title>
         <meta
           name="viewport"
@@ -51,5 +51,4 @@ const App = (props) => {
     </CacheProvider>
   );
 };
-
 export default App;

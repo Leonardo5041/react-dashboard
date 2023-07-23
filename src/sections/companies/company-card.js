@@ -1,17 +1,20 @@
 import PropTypes from 'prop-types';
-import ArrowDownOnSquareIcon from '@heroicons/react/24/solid/ArrowDownOnSquareIcon';
+import CurrencyDollarIcon from '@heroicons/react/24/solid/CurrencyDollarIcon';
 import ClockIcon from '@heroicons/react/24/solid/ClockIcon';
 import { Avatar, Box, Card, CardContent, Divider, Stack, SvgIcon, Typography } from '@mui/material';
-
+import { useRouter } from 'next/router';
 export const CompanyCard = (props) => {
+  const router = useRouter();
   const { company } = props;
 
   return (
     <Card
+      onClick={() => router.push(`/memberships/${company?.id}`)}
       sx={{
         display: 'flex',
         flexDirection: 'column',
-        height: '100%'
+        height: '100%',
+        cursor: 'pointer'
       }}
     >
       <CardContent>
@@ -23,8 +26,8 @@ export const CompanyCard = (props) => {
           }}
         >
           <Avatar
-            src={company.logo}
-            variant="square"
+            alt="Company"
+            variant="circular"
           />
         </Box>
         <Typography
@@ -32,13 +35,13 @@ export const CompanyCard = (props) => {
           gutterBottom
           variant="h5"
         >
-          {company.title}
+          {company?.name}
         </Typography>
         <Typography
           align="center"
           variant="body1"
         >
-          {company.description}
+          {company?.description}
         </Typography>
       </CardContent>
       <Box sx={{ flexGrow: 1 }} />
@@ -66,7 +69,7 @@ export const CompanyCard = (props) => {
             display="inline"
             variant="body2"
           >
-            Updated 2hr ago
+            Duración: {(company?.duration) ? Math.round(company.duration / 24) : N/A } días
           </Typography>
         </Stack>
         <Stack
@@ -78,14 +81,14 @@ export const CompanyCard = (props) => {
             color="action"
             fontSize="small"
           >
-            <ArrowDownOnSquareIcon />
+            <CurrencyDollarIcon />
           </SvgIcon>
           <Typography
             color="text.secondary"
             display="inline"
             variant="body2"
           >
-            {company.downloads} Downloads
+            {company?.price} MXN
           </Typography>
         </Stack>
       </Stack>

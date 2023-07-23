@@ -1,51 +1,63 @@
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 import Head from 'next/head';
-import { useRouter } from 'next/navigation';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import {
   Box,
   Button,
   Stack,
-  Tab,
-  Tabs,
   TextField,
   Typography
 } from '@mui/material';
-import { useAuth } from 'src/hooks/use-auth';
-import { Layout as AuthLayout } from 'src/layouts/auth/layout';
+import { Layout as AccessLayout } from 'src/layouts/access/layout';
 import axios from 'axios';
+import { BACKEND_URL } from 'src/utils/get-initials';
+import Swal from 'sweetalert2';
 
 
 const mapError = {
   'Invalid credentials': 'Correo o contraseña incorrectos',
   'User not found': 'El usuario no existe'
 }
+
+const welcomeAlert = ({access, message}) => {
+  Swal.fire({
+    position: 'top-end',
+    icon: (access) ? 'success' : 'error',
+    title: message,
+    showConfirmButton: false,
+    timer: 1500
+  })
+}
 const Page = () => {
-  const router = useRouter();
-  const auth = useAuth();
   const [method, setMethod] = useState('email');
   const formik = useFormik({
     initialValues: {
-      email: '',
-      password: '',
+      client_number: 0,
+      token: '',
       submit: null
     },
     validationSchema: Yup.object({
-      email: Yup
+        client_number: Yup
         .string()
-        .email('Debe ser un correo válido')
-        .max(255)
-        .required('Correo es requerido'),
-      password: Yup
+        .min(1, 'Ingrese un numero de cliente valido')
+        .max(999)
+        .required('Numero de cliente requerido'),
+        token: Yup
         .string()
-        .max(255)
-        .required('Contraseña requerida')
+        .min(1, 'Ingrese un token valido')
+        .max(7, 'Ingrese un token valido de 6 digitos')
+        .required('Para acceder necesita un código de acceso')
     }),
     onSubmit: async (values, helpers) => {
       try {
-        await auth.signIn(values.email, values.password);
-        router.push('/');
+        const response = await axios.post(`${BACKEND_URL}clients/access`, {
+          client_number: values.client_number,
+          token: values.token
+        })
+        const { data } = response;
+        welcomeAlert({ access: data?.access, message: data?.message });
+        formik.resetForm();
       } catch (err) {
         if (axios.isAxiosError(err)) {
           const message = mapError[err.response.data.message];
@@ -61,18 +73,12 @@ const Page = () => {
     }
   });
 
-  const handleMethodChange = useCallback(
-    (event, value) => {
-      setMethod(value);
-    },
-    []
-  );
 
   return (
     <>
       <Head>
         <title>
-          Iniciar Sesión | Pitbulls Gym
+          Acceso Clientes | Pitbulls Gym
         </title>
       </Head>
       <Box
@@ -98,7 +104,7 @@ const Page = () => {
               sx={{ mb: 3 }}
             >
               <Typography variant="h4">
-                Iniciar Sesión
+                Ingresar Acceso
               </Typography>
               {/* <Typography
                 color="text.secondary"
@@ -116,7 +122,7 @@ const Page = () => {
                 </Link>
               </Typography> */}
             </Stack>
-            <Tabs
+            {/* <Tabs
               onChange={handleMethodChange}
               sx={{ mb: 3 }}
               value={method}
@@ -126,10 +132,10 @@ const Page = () => {
                 value="email"
               />
               <Tab
-                label="Acceso Clientes"
+                label="Numero de Telefono"
                 value="phoneNumber"
               />
-            </Tabs>
+            </Tabs> */}
             {method === 'email' && (
               <form
                 noValidate
@@ -137,26 +143,26 @@ const Page = () => {
               >
                 <Stack spacing={3}>
                   <TextField
-                    error={!!(formik.touched.email && formik.errors.email)}
+                    error={!!(formik.touched.client_number && formik.errors.client_number)}
                     fullWidth
-                    helperText={formik.touched.email && formik.errors.email}
-                    label="Correo Electrónico"
-                    name="email"
+                    helperText={formik.touched.client_number && formik.errors.client_number}
+                    label="Número de Cliente"
+                    name="client_number"
                     onBlur={formik.handleBlur}
                     onChange={formik.handleChange}
-                    type="email"
-                    value={formik.values.email}
+                    type="number"
+                    value={formik.values.client_number}
                   />
                   <TextField
-                    error={!!(formik.touched.password && formik.errors.password)}
+                    error={!!(formik.touched.token && formik.errors.token)}
                     fullWidth
-                    helperText={formik.touched.password && formik.errors.password}
-                    label="Contraseña"
-                    name="password"
+                    helperText={formik.touched.token && formik.errors.token}
+                    label="Token de Acceso"
+                    name="token"
                     onBlur={formik.handleBlur}
                     onChange={formik.handleChange}
-                    type="password"
-                    value={formik.values.password}
+                    type="text"
+                    value={formik.values.token}
                   />
                 </Stack>
                 {/* <FormHelperText sx={{ mt: 1 }}>
@@ -178,7 +184,7 @@ const Page = () => {
                   type="submit"
                   variant="contained"
                 >
-                  Iniciar Sesión
+                  Ingresar
                 </Button>
                 {/* <Button
                   fullWidth
@@ -200,18 +206,17 @@ const Page = () => {
               </form>
             )}
             {method === 'phoneNumber' && (
-              router.push('/access')
-              // <div>
-              //   <Typography
-              //     sx={{ mb: 1 }}
-              //     variant="h6"
-              //   >
-              //     No disponible por el momento
-              //   </Typography>
-              //   <Typography color="text.secondary">
-              //     Muy pronto podras Iniciar sesión con tu numero de telefono
-              //   </Typography>
-              // </div>
+              <div>
+                <Typography
+                  sx={{ mb: 1 }}
+                  variant="h6"
+                >
+                  No disponible por el momento
+                </Typography>
+                <Typography color="text.secondary">
+                  Muy pronto podras Iniciar sesión con tu numero de telefono
+                </Typography>
+              </div>
             )}
           </div>
         </Box>
@@ -221,9 +226,9 @@ const Page = () => {
 };
 
 Page.getLayout = (page) => (
-  <AuthLayout>
+  <AccessLayout>
     {page}
-  </AuthLayout>
+  </AccessLayout>
 );
 
 export default Page;
