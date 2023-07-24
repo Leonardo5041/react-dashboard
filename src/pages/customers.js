@@ -11,6 +11,8 @@ import axios from 'axios';
 import { useRouter } from 'next/router';
 import MagnifyingGlassIcon from '@heroicons/react/24/solid/MagnifyingGlassIcon';
 import { BACKEND_URL } from 'src/utils/get-initials';
+import Swal from 'sweetalert2';
+import { useAuth } from '../hooks/use-auth';
 
 
 const useCustomers = (page, rowsPerPage, data) => {
@@ -32,6 +34,7 @@ const useCustomerIds = (customers) => {
 };
 
 const Page = () => {
+  const auth = useAuth();
   const router = useRouter();
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -51,21 +54,33 @@ const Page = () => {
           Authorization: `Bearer ${token}`
         }
       });
-      if (status !== 200) {
-        setClients([]);
-      } else {
-        (status === 401) ? window.sessionStorage.setItem('authenticated', 'false') : null;
+      if (status === 200) {
         setClients(data);
       }
     } catch (error) {
-      setClients([]);
+      if (axios.isAxiosError(error)) {
+        if (error.response.status === 401) {
+          return signOut();
+        }
+      }
     }
   };
+
+  const signOut = async () => {
+    await auth.signOut();
+    await Swal.fire({
+      title: 'Tu sesión ha expirado',
+      text: 'Por favor, inicia sesión nuevamente',
+      icon: 'warning',
+      confirmButtonText: 'Aceptar',
+      allowOutsideClick: false
+    });
+    await router.push('/auth/login');
+  }
 
   useEffect(() => {
     fetchCustomers();
   }, []);
-
 
 
   const handlePageChange = useCallback(

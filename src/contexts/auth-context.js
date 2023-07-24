@@ -191,6 +191,8 @@ export const AuthProvider = (props) => {
   };
 
   const signOut = () => {
+    window.sessionStorage.removeItem('authenticated');
+    localStorage.removeItem('token');
     dispatch({
       type: HANDLERS.SIGN_OUT
     });
