@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
     Box,
     Button,
@@ -31,16 +31,16 @@ export const CustomerProfileDetails = ({ user }) => {
         name: '',
         email: '',
         phone: '',
-        active: true
     });
+    const [active, setActive] = useState(user?.active);
 
     useEffect(() => {
         setValues({
             name: user?.name,
             email: user?.email,
             phone: user?.phone,
-            active: user?.active
         });
+        setActive(user?.active)
     }, [user]);
 
     const handleChange = (event) => {
@@ -50,6 +50,14 @@ export const CustomerProfileDetails = ({ user }) => {
         });
     };
 
+    const handleActiveChange = useCallback(
+      () => {
+        setActive(!active)
+      },
+      [active]
+    );
+
+
 
     const handleSubmit = async (event) => {
         event.preventDefault();
@@ -57,7 +65,7 @@ export const CustomerProfileDetails = ({ user }) => {
             name: values.name,
             email: values.email,
             phone: values.phone,
-            active: (values.active === 'true')
+            active: active
         };
         try {
             const { data } = await axios.patch(`${BACKEND_URL}clients/${user.id}`, request);
@@ -146,11 +154,11 @@ export const CustomerProfileDetails = ({ user }) => {
                                     fullWidth
                                     label="Seleccionar estado"
                                     name="active"
-                                    onChange={handleChange}
+                                    onChange={handleActiveChange}
                                     
                                     select
                                     SelectProps={{ native: true }}
-                                    value={values.active}
+                                    value={active}
                                 >
                                     {states.map((option) => (
                                         <option

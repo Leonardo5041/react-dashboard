@@ -147,18 +147,18 @@ export const AuthProvider = (props) => {
   };
 
   const signIn = async (email, password) => {
-
-    const request = {
-      email,
-      password
-    };
-    const { data, status } = await axios.post(`${BACKEND_URL}users/login`, request);
-
-    if (status !== 201) {
-      const message = mapLoginStatus[status];
-      throw new Error(message);
-    }
+    let response = null;
     try {
+      const request = {
+        email,
+        password
+      };
+      const { data, status } = await axios.post(`${BACKEND_URL}users/login`, request);
+      if (status !== 201) {
+        const message = mapLoginStatus[status];
+        throw new Error(message);
+      }
+      response = data;
       window.sessionStorage.setItem('authenticated', 'true');
       localStorage.setItem('token', data?.token);
     } catch (err) {
@@ -166,12 +166,11 @@ export const AuthProvider = (props) => {
     }
 
     const user = {
-      id: data?.user?.id,
+      id: response?.user?.id,
       avatar: '',
-      name: data?.user?.name,
-      email: data?.user?.email
+      name: response?.user?.name,
+      email: response?.user?.email
     };
-
     dispatch({
       type: HANDLERS.SIGN_IN,
       payload: user
@@ -188,7 +187,7 @@ export const AuthProvider = (props) => {
       return axios.post(`${BACKEND_URL}users/register`, request);
     } catch (err) {
       console.error(err);
-    };
+    }
   };
 
   const signOut = () => {
