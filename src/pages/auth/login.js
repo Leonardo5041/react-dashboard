@@ -176,6 +176,7 @@ const Page = () => {
                   size="large"
                   sx={{ mt: 3 }}
                   type="submit"
+                  onClick={formik.handleSubmit}
                   variant="contained"
                 >
                   Iniciar Sesión

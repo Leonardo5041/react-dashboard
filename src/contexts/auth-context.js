@@ -85,22 +85,22 @@ export const AuthProvider = (props) => {
 
     if (isAuthenticated) {
       try {
-        const {data} = await axios.get(`${BACKEND_URL}users/user`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      const user = {
-        id: data?.id,
-        avatar: getInitials(data?.name) || '',
-        name: data?.name,
-        email: data?.email
-      };
+        const { data } = await axios.get(`${BACKEND_URL}users/user`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        const user = {
+          id: data?.id,
+          avatar: getInitials(data?.name) || '',
+          name: data?.name,
+          email: data?.email
+        };
 
-      dispatch({
-        type: HANDLERS.INITIALIZE,
-        payload: user
-      });
+        dispatch({
+          type: HANDLERS.INITIALIZE,
+          payload: user
+        });
       } catch (err) {
         if (axios.isAxiosError(err)) {
           if (err.response.status === 401) {
@@ -147,13 +147,12 @@ export const AuthProvider = (props) => {
   };
 
   const signIn = async (email, password) => {
-    //loadEnvVariables();
-  
+
     const request = {
       email,
       password
-    }; 
-    const {data, status} = await axios.post(`${BACKEND_URL}users/login`, request);
+    };
+    const { data, status } = await axios.post(`${BACKEND_URL}users/login`, request);
 
     if (status !== 201) {
       const message = mapLoginStatus[status];
@@ -180,7 +179,16 @@ export const AuthProvider = (props) => {
   };
 
   const signUp = async (email, name, password) => {
-    throw new Error('Sign up is not implemented');
+    try {
+      const request = {
+        email,
+        name,
+        password
+      }
+      return axios.post(`${BACKEND_URL}users/register`, request);
+    } catch (err) {
+      console.error(err);
+    };
   };
 
   const signOut = () => {

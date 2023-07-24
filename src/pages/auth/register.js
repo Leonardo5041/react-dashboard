@@ -5,6 +5,8 @@ import * as Yup from 'yup';
 import { Box, Button, Stack, TextField, Typography } from '@mui/material';
 import { useAuth } from 'src/hooks/use-auth';
 import { Layout as DashboardLayout } from 'src/layouts/dashboard/layout';
+import Swal from 'sweetalert2';
+import axios from 'axios';
 const Page = () => {
   const router = useRouter();
   const auth = useAuth();
@@ -32,12 +34,31 @@ const Page = () => {
     }),
     onSubmit: async (values, helpers) => {
       try {
-        await auth.signUp(values.email, values.name, values.password);
-        router.push('/');
+        const response = await auth.signUp(values.email, values.name, values.password);
+        await Swal.fire({
+          title: 'Éxito',
+          text: 'El administrador ha sido registrado',
+          icon: 'success',
+          confirmButtonText: 'Ok'
+        });
+        router.push('/')
       } catch (err) {
-        helpers.setStatus({ success: false });
-        helpers.setErrors({ submit: err.message });
-        helpers.setSubmitting(false);
+        if (axios.isAxiosError(err)) {
+          const message = err.response.data.message;
+          await Swal.fire({
+            title: 'Error',
+            text: message,
+            icon: 'error',
+            confirmButtonText: 'Ok'
+          });
+          helpers.setStatus({ success: false });
+          helpers.setErrors({ submit: message });
+          helpers.setSubmitting(false);
+        } else {
+          helpers.setStatus({ success: false });
+          helpers.setErrors({ submit: err.message });
+          helpers.setSubmitting(false);
+        }
       }
     }
   });
