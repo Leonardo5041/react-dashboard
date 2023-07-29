@@ -3,11 +3,13 @@ import PropTypes from 'prop-types';
 import axios from 'axios';
 import { useRouter } from 'next/router';
 import { BACKEND_URL, getInitials } from 'src/utils/get-initials';
+import Swal from 'sweetalert2';
 
 const HANDLERS = {
   INITIALIZE: 'INITIALIZE',
   SIGN_IN: 'SIGN_IN',
-  SIGN_OUT: 'SIGN_OUT'
+  SIGN_OUT: 'SIGN_OUT',
+  LOADING: 'LOADING'
 };
 
 const initialState = {
@@ -25,19 +27,10 @@ const handlers = {
     const user = action.payload;
     return {
       ...state,
-      ...(
-        // if payload (user) is provided, then is authenticated
-        user
-          ? ({
-            isAuthenticated: true,
-            isLoading: false,
-            user: user
-          })
-          : ({
-            isLoading: false
-          })
-      )
-    };
+      isAuthenticated: !!user,
+      isLoading: false,
+      user: user
+    }
   },
   [HANDLERS.SIGN_IN]: (state, action) => {
     const user = action.payload;
@@ -53,6 +46,12 @@ const handlers = {
       isAuthenticated: false,
       user: null
     };
+  },
+  [HANDLERS.LOADING]: (state) => {
+    return {
+      ...state,
+      isLoading: true
+    }
   }
 };
 
@@ -67,7 +66,7 @@ export const AuthContext = createContext();
 export const AuthProvider = (props) => {
   const router = useRouter();
   const { children } = props;
-  const [state, dispatch] = useReducer(reducer, initialState);
+  const [state, dispatch] = useReducer(reducer, initialState, () => initialState);
   const initialized = useRef(false);
 
   const initialize = async () => {
@@ -146,31 +145,7 @@ export const AuthProvider = (props) => {
     });
   };
 
-  const signIn = async (email, password) => {
-    let response = null;
-    try {
-      const request = {
-        email,
-        password
-      };
-      const { data, status } = await axios.post(`${BACKEND_URL}users/login`, request);
-      if (status !== 201) {
-        const message = mapLoginStatus[status];
-        throw new Error(message);
-      }
-      response = data;
-      window.sessionStorage.setItem('authenticated', 'true');
-      localStorage.setItem('token', data?.token);
-    } catch (err) {
-      console.error(err);
-    }
-
-    const user = {
-      id: response?.user?.id,
-      avatar: '',
-      name: response?.user?.name,
-      email: response?.user?.email
-    };
+  const signIn = async (user) => {
     dispatch({
       type: HANDLERS.SIGN_IN,
       payload: user
