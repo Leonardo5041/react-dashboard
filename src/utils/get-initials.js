@@ -1,4 +1,6 @@
 import Swal from 'sweetalert2';
+import moment from 'moment';
+import 'moment/locale/es-mx';
 
 export const getInitials = (name = '') => name
   .replace(/\s+/, ' ')
@@ -22,4 +24,9 @@ export const confirmAlert = async (message) => {
     confirmButtonText: 'Eliminar',
     cancelButtonText: 'Cancelar',
   });
+}
+
+export const formatDateTime = (dateRequest) => {
+  if (!dateRequest) return '';
+  return moment(dateRequest).utc(false).format('LL').toUpperCase();
 }
