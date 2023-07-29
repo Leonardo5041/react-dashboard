@@ -39,6 +39,7 @@ const Page = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [clients, setClients] = useState([]);
+  const [clientsSearch, setClientsSearch] = useState([]);
   const customers = useCustomers(page, rowsPerPage, clients);
   const customersIds = useCustomerIds(clients);
   const customersSelection = useSelection(customersIds);
@@ -98,9 +99,14 @@ const Page = () => {
   );
 
   const handleSearch = (event) => {
-    if (event === '') fetchCustomers();
+    if (event === '') {
+      setClientsSearch([]);
+      setClients(clients);
+      return;
+    }
     const filteredData = clients.filter((client) => client.name.toLowerCase().includes(event.toLowerCase()));
-    setClients(filteredData);
+    setClientsSearch(filteredData);
+    setPage(0)
   }
 
   return (
@@ -164,8 +170,8 @@ const Page = () => {
               />
             </Card>
             <CustomersTable
-              count={clients.length}
-              items={customers}
+              count={(clientsSearch.length > 0) ? clientsSearch.length : clients.length}
+              items={(clientsSearch.length > 0) ? clientsSearch : customers}
               onDeselectAll={customersSelection.handleDeselectAll}
               onDeselectOne={customersSelection.handleDeselectOne}
               onPageChange={handlePageChange}

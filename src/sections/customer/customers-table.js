@@ -16,7 +16,7 @@ import {
   Typography
 } from '@mui/material';
 import { Scrollbar } from 'src/components/scrollbar';
-import { getInitials } from 'src/utils/get-initials';
+import { formatDateTime, getInitials } from 'src/utils/get-initials';
 import { useRouter } from 'next/router';
 import { SeverityPill } from 'src/components/severity-pill';
 
@@ -38,7 +38,7 @@ const getStatusLabel = (endDate) => {
 
 const formatDate = (date) => {
   if (!date) return 'No cuenta con una suscripción';
-  return `Fecha de termino: ${format(new Date(date), 'dd-MMM-yyyy')} `;
+  return `Fecha de termino: ${formatDateTime(date)} `;
 }
 
 const getNumberClient = (clientNumber) => {
@@ -162,7 +162,7 @@ export const CustomersTable = (props) => {
         onRowsPerPageChange={onRowsPerPageChange}
         page={page}
         rowsPerPage={rowsPerPage}
-        rowsPerPageOptions={[10, 20, 30]}
+        rowsPerPageOptions={[5, 10, 20, 30, 50, 100]}
       />
     </Card>
   );
