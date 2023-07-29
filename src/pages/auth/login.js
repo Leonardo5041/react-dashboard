@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useContext, useState } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/navigation';
 import { useFormik } from 'formik';
@@ -15,16 +15,32 @@ import {
 import { useAuth } from 'src/hooks/use-auth';
 import { Layout as AuthLayout } from 'src/layouts/auth/layout';
 import axios from 'axios';
+import { AuthContext } from '../../contexts/auth-context';
+import { BACKEND_URL } from '../../utils/get-initials';
+import Swal from 'sweetalert2';
 
 
 const mapError = {
   'Invalid credentials': 'Correo o contraseña incorrectos',
   'User not found': 'El usuario no existe'
 }
+
+const LoadingComponent = () => {
+  return (
+    Swal.fire({
+      title: 'Iniciando sesión',
+      text: 'Por favor espere',
+      icon: 'info',
+      allowOutsideClick: false,
+    }) && Swal.showLoading()
+  )
+}
 const Page = () => {
   const router = useRouter();
   const auth = useAuth();
+  const authContext = useContext(AuthContext);
   const [method, setMethod] = useState('email');
+  const [loading, setLoading] = useState(false);
   const formik = useFormik({
     initialValues: {
       email: '',
@@ -44,9 +60,25 @@ const Page = () => {
     }),
     onSubmit: async (values, helpers) => {
       try {
-        await auth.signIn(values.email, values.password);
-        router.push('/');
+        setLoading(true);
+        LoadingComponent(loading);
+        const { data = null, status } = await axios.post(`${BACKEND_URL}users/login`, {
+          email: values.email,
+          password: values.password
+        });
+        if (status === 201) {
+          const { token, user } = data;
+          await authContext.signIn(user);
+          localStorage.setItem('token', token);
+          Swal.close()
+          setLoading(false);
+          await router.push('/customers');
+        } else {
+          setLoading(false);
+        }
       } catch (err) {
+        Swal.close();
+        setLoading(false);
         if (axios.isAxiosError(err)) {
           const message = mapError[err.response.data.message];
           helpers.setStatus({ success: false });
