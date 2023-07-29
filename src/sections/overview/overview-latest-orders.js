@@ -18,6 +18,7 @@ import {
 import { Scrollbar } from 'src/components/scrollbar';
 import { SeverityPill } from 'src/components/severity-pill';
 import { useRouter } from 'next/router';
+import { formatDateTime } from '../../utils/get-initials';
 
 
 const getStatusLabel = (endDate) => {
@@ -71,8 +72,8 @@ export const OverviewLatestOrders = (props) => {
             </TableHead>
             <TableBody>
               {orders.map((order) => {
-                const createdAt = format(new Date(order.start_date), 'dd MMM, yyyy');
-                const expirationAt = format(new Date(order.end_date), 'dd MMM, yyyy');
+                const createdAt = formatDateTime(order.start_date);
+                const expirationAt = formatDateTime(order.end_date);
 
                 return (
                   <TableRow
