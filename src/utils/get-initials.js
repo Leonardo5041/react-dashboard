@@ -10,7 +10,7 @@ export const getInitials = (name = '') => name
   .join('');
 
 
-export const BACKEND_URL = 'https://gymapi-dfkn.onrender.com/'
+export const BACKEND_URL = 'https://p70ny5tlre.execute-api.us-east-1.amazonaws.com/prod/'
 
 
 export const confirmAlert = async (message) => {
