@@ -77,7 +77,7 @@ const Page = () => {
       allowOutsideClick: false
     });
     await router.push('/auth/login');
-  }
+  };
 
   useEffect(() => {
     fetchCustomers();

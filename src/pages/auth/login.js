@@ -72,7 +72,7 @@ const Page = () => {
           localStorage.setItem('token', token);
           Swal.close()
           setLoading(false);
-          await router.push('/customers');
+          await router.push('/');
         } else {
           setLoading(false);
         }

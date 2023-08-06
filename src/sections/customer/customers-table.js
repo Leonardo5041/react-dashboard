@@ -11,7 +11,7 @@ import {
   TableCell,
   TableHead,
   TablePagination,
-  TableRow,
+  TableRow, TableSortLabel,
   Tooltip,
   Typography
 } from '@mui/material';
@@ -19,14 +19,18 @@ import { Scrollbar } from 'src/components/scrollbar';
 import { formatDateTime, getInitials } from 'src/utils/get-initials';
 import { useRouter } from 'next/router';
 import { SeverityPill } from 'src/components/severity-pill';
+import { useState } from 'react';
 
 const getSubscriptionState = (endDate) => {
   const now = new Date();
   const isBefore = endDate ? now < new Date(endDate) : false;
   return isBefore ? 'info' : 'warning';
-}
+};
 
 const getStatusLabel = (endDate) => {
+  if (!endDate) {
+    return 'Membresia Inactiva';
+  }
   const date = new Date(endDate);
 
   if (date > new Date()) {
@@ -34,20 +38,35 @@ const getStatusLabel = (endDate) => {
   }
 
   return 'Membresia Inactiva';
-}
+};
 
 const formatDate = (date) => {
-  if (!date) return 'No cuenta con una suscripción';
+  if (!date) {
+    return 'No cuenta con una suscripción';
+  }
   return `Fecha de termino: ${formatDateTime(date)} `;
-}
+};
 
 const getNumberClient = (clientNumber) => {
-  if (!clientNumber) return 'No cuenta con un numero de cliente';
+  if (!clientNumber) {
+    return 'No cuenta con un numero de cliente';
+  }
   return `Numero de cliente: ${clientNumber}`;
-}
+};
+
+const orderBySubscription = (data, order) => {
+  let result;
+    result = data.sort((a, b) => {
+      const responseA = getStatusLabel(a?.subscription?.end_date) === 'Membresia Activa' ? 1 : 0;
+      const responseB = getStatusLabel(b?.subscription?.end_date) === 'Membresia Activa' ? 1 : 0;
+      return responseA - responseB;
+    });
+  return order === 'desc' ? result.reverse() : result;
+};
 
 export const CustomersTable = (props) => {
   const router = useRouter();
+  const [order, setOrder] = useState('none');
   const {
     count = 0,
     items = [],
@@ -65,6 +84,13 @@ export const CustomersTable = (props) => {
   // const selectedSome = (selected.length > 0) && (selected.length < items.length);
   // const selectedAll = (items.length > 0) && (selected.length === items.length);
 
+  const handleSort = (order) => {
+    if (order === 'none') {
+      return;
+    }
+    setOrder(order);
+    const result = orderBySubscription(items, order);
+  };
   return (
     <Card>
       <Scrollbar>
@@ -81,8 +107,16 @@ export const CustomersTable = (props) => {
                 <TableCell>
                   Estado del Cliente
                 </TableCell>
-                <TableCell>
-                  Estado de la subscripcion
+                <TableCell
+                  sortDirection={'desc'}
+                >
+                  <TableSortLabel
+                    active={true}
+                    direction={order === 'none' ? 'desc' : order}
+                    onClick={() => handleSort(order === 'asc' ? 'desc' : 'asc')}
+                  >
+                    Estado de la subscripcion
+                  </TableSortLabel>
                 </TableCell>
                 <TableCell>
                   Acciones
@@ -119,14 +153,14 @@ export const CustomersTable = (props) => {
                     </TableCell>
                     <TableCell>
                       <SeverityPill
-                        color={(customer?.active ? 'success' : 'error')} >
+                        color={(customer?.active ? 'success' : 'error')}>
                         {customer?.active ? 'Activo' : 'Inactivo'}
                       </SeverityPill>
                     </TableCell>
                     <Tooltip title={formatDate(customer?.subscription?.end_date)}>
                       <TableCell>
                         <SeverityPill
-                          color={(getSubscriptionState(customer?.subscription?.end_date))} >
+                          color={(getSubscriptionState(customer?.subscription?.end_date))}>
                           {getStatusLabel(customer?.subscription?.end_date)}
                         </SeverityPill>
 
