@@ -1,5 +1,5 @@
 import {
-    Avatar,
+    Alert,
     Box,
     Button,
     Card,
@@ -7,75 +7,154 @@ import {
     CardContent,
     Divider,
 } from '@mui/material';
-import axios from 'axios';
-import { useState } from 'react';
-import { BACKEND_URL } from 'src/utils/get-initials';
+import {useEffect, useState} from 'react';
 import Swal from 'sweetalert2';
+import {socket} from "../../socket";
+import {useRouter} from "next/router";
 
+const SavingCard = () => {
+    return (
+        Swal.fire({
+            title: 'Por favor acerque la tarjeta al lector',
+            text: 'Guardando tarjeta',
+            icon: 'info',
+            allowOutsideClick: false,
+            showCancelButton: true,
+        }) && Swal.showLoading()
+    )
+}
+export const CustomerFingerPrint = ({user}) => {
+    const router = useRouter();
+    const [loadingCard, setLoadingCard] = useState(false);
 
-export const CustomerFingerPrint = ({ user }) => {
-    const [qrImage, setQrImage] = useState();
+    useEffect(() => {
+        socket.on('register-card', (data) => {
+            setLoadingCard(true);
+            registerCard(true).then(() => {
+            }).catch(() => {
+            });
+        });
+        socket.on('access', async (data) => {
+            if (data.card) {
+                const userId = localStorage.getItem('user-id');
+                const idCard = data.card;
+                socket.emit('save-card', {user_id: userId, card_id: idCard});
+                setLoadingCard(false);
+                localStorage.removeItem('user-id');
+                router.reload();
+                socket.off('access');
+            }
+        });
+        socket.on('save-card', async (data) => {
+            const { result } = data;
+            await registerCard(result);
+        });
 
-    const handleSubmit = async () => {
+        return () => {
+            socket.off('register-card');
+            socket.off('access');
+            socket.off('save-card');
+        }
+    }, [router]);
+
+    const registerCard = async (value) => {
+        if (value) {
+            await Swal.fire({
+                title: 'Tarjeta registrada',
+                text: 'Tarjeta registrada con éxito',
+                icon: 'success',
+                allowOutsideClick: false,
+                //cerrar el modal despues de 2 segundos
+                timer: 1500,
+            });
+        } else {
+            await Swal.fire({
+                title: 'Tarjeta no registrada',
+                text: 'Tarjeta no registrada con éxito',
+                icon: 'error',
+                allowOutsideClick: false,
+            });
+        }
+    }
+
+    const handleSubmit = async (userId) => {
         const confirmResponse = await Swal.fire({
-          title: '¿Generar un nuevo código QR de acceso?',
-          icon: 'question',
-          iconHtml: '?',
-          confirmButtonText: 'Si',
-          cancelButtonText: 'No',
-          showCancelButton: true,
-          showCloseButton: true
+            title: '¿Actualizar Tarjeta de Acceso?',
+            icon: 'question',
+            iconHtml: '?',
+            confirmButtonText: 'Si',
+            cancelButtonText: 'No',
+            showCancelButton: true,
+            showCloseButton: true
         });
         if (!confirmResponse.isConfirmed) return;
+
         try {
-            const fingerprintResponse = await axios.get(`${BACKEND_URL}clients/${user.id}/register-fingerprint`, {
-                headers: {
-                    Authorization: `Bearer ${localStorage.getItem('token')}`
-                }
-            });
-            if (fingerprintResponse.status === 200) {
-                setQrImage(fingerprintResponse?.data?.qrCode);
-            }
+            localStorage.setItem('user-id', userId);
+            socket.emit('register-card', {user_id: user.id});
         } catch (error) {
             console.log(error);
         }
     }
     return (
-        <Card>
-            <CardContent>
-                <Box
-                    sx={{
-                        alignItems: 'center',
-                        display: 'flex',
-                        flexDirection: 'column'
-                    }}
-                >
+        <>
+            {
+                (loadingCard) && <SavingCard/>
+            }
+            <Card>
+                <CardContent>
+                    <Box
+                        sx={{
+                            alignItems: 'center',
+                            display: 'flex',
+                            flexDirection: 'column'
+                        }}
+                    >
+                        {
+                            (user?.fingerprint_secret) ?
+                                <Alert
+                                    color="info"
+                                    severity="info"
+                                >
+                                    <div>
+                                        El cliente cuenta con una <b>tarjeta</b> asignada.
+                                    </div>
+                                </Alert>
+                                :
+                                <Alert
+                                    color="warning"
+                                    severity="warning"
+                                >
+                                    <div>
+                                        El cliente no tiene una <b>tarjeta</b> asignada.
+                                    </div>
+                                </Alert>
+                        }
+                    </Box>
+                </CardContent>
+                <Divider/>
+                <CardActions>
                     {
-                        (qrImage) ?
-                            <Avatar
-                            variant='square'
-                                src={qrImage}
-                                sx={{
-                                    height: 200,
-                                    width: 200
-                                }}
-
-                            />
+                        (user?.fingerprint_secret) ?
+                            <Button
+                                fullWidth
+                                variant="text"
+                                onClick={() => handleSubmit(user.id)}
+                            >
+                                Actualizar Tarjeta de Acceso
+                            </Button>
                             :
-                            <></>
+                            <Button
+                                fullWidth
+                                variant="text"
+                                onClick={() => handleSubmit(user.id)}
+                            >
+                                Agregar Tarjeta de Acceso
+                            </Button>
                     }
-                </Box>
-            </CardContent>
-            <Divider />
-            <CardActions>
-                <Button
-                    fullWidth
-                    variant="text"
-                    onClick={handleSubmit}
-                >
-                    Generar QR de acceso
-                </Button>
-            </CardActions>
-        </Card>
+
+                </CardActions>
+            </Card>
+        </>
     );
 }

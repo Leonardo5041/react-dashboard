@@ -11,7 +11,7 @@ export const getInitials = (name = '') => name
 
 
 export const BACKEND_URL = 'https://p70ny5tlre.execute-api.us-east-1.amazonaws.com/prod/'
-
+//export const BACKEND_URL = 'http://192.168.100.7:2112/'
 
 export const confirmAlert = async (message) => {
   return await Swal.fire({
