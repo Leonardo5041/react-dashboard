@@ -1,5 +1,5 @@
 import Head from 'next/head';
-import { Box, Container, Stack, Typography, Unstable_Grid2 as Grid, Divider } from '@mui/material';
+import {Box, Container, Stack, Typography, Unstable_Grid2 as Grid, Divider, LinearProgress} from '@mui/material';
 import { Layout as DashboardLayout } from 'src/layouts/dashboard/layout';
 import { CustomerProfile } from 'src/sections/customer/customer-profile';
 import { CustomerProfileDetails } from 'src/sections/customer/customer-profile-details';
@@ -9,30 +9,24 @@ import axios from 'axios';
 import { useState, useEffect } from 'react';
 import { BACKEND_URL } from 'src/utils/get-initials';
 import { CustomerFingerPrint } from 'src/sections/customer/customer-fingerprint';
+import {useQuery} from "@tanstack/react-query";
+
+const getCustomer = async (id) => {
+    try {
+        const { data, status } = await axios.get(`${BACKEND_URL}clients/${id}`);
+        if (status === 200) {
+            return data;
+        } else {
+            return null;
+        }
+    } catch (err) {
+        throw new Error(err);
+    }
+};
 const Page = () => {
     const router = useRouter();
     const { pid } = router.query;
-    const [customer, setCustomer] = useState(null);
-
-    const getCustomer = async (id) => {
-        try {
-            const { data, status } = await axios.get(`${BACKEND_URL}clients/${id}`);
-            if (status === 200) {
-                setCustomer(data);
-            } else {
-                setCustomer(null);
-            }
-        } catch (err) {
-            return null;
-        }
-    };
-
-    useEffect(() => {
-        if (pid) {
-            getCustomer(pid);
-        }
-    }, [pid]);
-
+    const { isError, isLoading, data: customer = null } = useQuery(['customer'], async () => await getCustomer(pid));
 
     return (
         <>
@@ -60,6 +54,18 @@ const Page = () => {
                                 container
                                 spacing={3}
                             >
+                                {
+                                    isLoading && (
+                                        <LinearProgress />
+                                    )
+                                }
+                                {
+                                    isError && (
+                                        <Typography variant="h4">
+                                            Error al cargar el cliente
+                                        </Typography>
+                                    )
+                                }
                                 <Grid
                                     xs={12}
                                     md={6}

@@ -3,7 +3,6 @@ import PropTypes from 'prop-types';
 import axios from 'axios';
 import { useRouter } from 'next/router';
 import { BACKEND_URL, getInitials } from 'src/utils/get-initials';
-import Swal from 'sweetalert2';
 
 const HANDLERS = {
   INITIALIZE: 'INITIALIZE',
@@ -168,6 +167,8 @@ export const AuthProvider = (props) => {
   const signOut = () => {
     window.sessionStorage.removeItem('authenticated');
     localStorage.removeItem('token');
+    router.push('/auth/login').then().catch().finally();
+    router.reload();
     dispatch({
       type: HANDLERS.SIGN_OUT
     });

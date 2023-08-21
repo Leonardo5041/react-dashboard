@@ -96,8 +96,12 @@ export const Layout = (props) => {
               Sin Excusas.
             </Typography>
             <img
-              alt=""
-              src="/assets/auth.svg"
+              alt="Pitbulls Gym"
+              style={{
+                borderRadius: '50%',
+                boxShadow: '0 8px 16px 0 rgba(0,0,0,0.24), 0 0 0 1px rgba(0,0,0,0.08)'
+              }}
+              src="/assets/pitbull.jpg"
             />
           </Box>
         </Grid>

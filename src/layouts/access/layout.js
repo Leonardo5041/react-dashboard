@@ -49,7 +49,7 @@ export const Layout = (props) => {
                 width: 32
               }}
             >
-              <Logo />
+              <Logo/>
             </Box>
           </Box>
           {children}
@@ -97,7 +97,13 @@ export const Layout = (props) => {
             </Typography>
             <img
               alt=""
-              src="/assets/auth.svg"
+              style={{
+                borderRadius: '25%',
+                height: 'auto',
+                maxWidth: '100%',
+                boxShadow: '0 8px 16px 0 rgba(0,0,0,0.24), 0 0 0 1px rgba(0,0,0,0.08)'
+              }}
+              src="/access.jpg"
             />
           </Box>
         </Grid>

@@ -1,42 +1,33 @@
 import Head from 'next/head';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
-import { Box, Button, Stack, TextField, Typography } from '@mui/material';
+import {Box, Button, LinearProgress, Stack, TextField, Typography} from '@mui/material';
 import { Layout as DashboardLayout } from 'src/layouts/dashboard/layout';
 import axios from 'axios';
 import { useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { BACKEND_URL, confirmAlert } from 'src/utils/get-initials';
+import {useQuery} from "@tanstack/react-query";
 
+const fetchMembership = async (id) => {
+    try {
+        const { data, status } = await axios.get(`${BACKEND_URL}membership/${id}`);
+        if (status === 200) {
+            return data;
+        } else {
+            return null;
+        }
+    } catch (err) {
+        throw new Error(err);
+    }
+}
 const Page = () => {
     const router = useRouter();
     const { pid } = router.query;
-    useEffect(() => {
-        if (!pid) return;
-        fetchMembership(pid).then((data) => {
-            const values = {
-                ...data,
-                duration: hoursToDays(data.duration)
-            }
-            formik.setValues(values);
-        }).catch((err) => {
-            console.error(err);
-        });
-    }, [router.query]);
-
-    const fetchMembership = async (id) => {
-        try {
-            const { data, status } = await axios.get(`${BACKEND_URL}membership/${id}`);
-            if (status === 200) {
-                return data;
-            } else {
-                console.error(data);
-            }
-        } catch (err) {
-            console.error(err);
-        }
-    }
-
+    const {isLoading, isError, data} = useQuery(['membership'], async () => await fetchMembership(pid), {
+        refetchOnWindowFocus: false,
+        staleTime: 1000 * 60 * 60 * 24 * 1 // 1 day
+    });
 
     const updateMembership = async (data) => {
         const { name, description, price, duration } = data;
@@ -51,7 +42,7 @@ const Page = () => {
         try {
             const { data, status } = await axios.patch(`${BACKEND_URL}membership/${pid}`, request);
             if (status === 200) {
-                router.push('/companies');
+                await router.push('/companies');
             } else {
                 console.error(data);
             }
@@ -66,7 +57,7 @@ const Page = () => {
         try {
             const { data, status } = await axios.delete(`${BACKEND_URL}membership/${pid}`);
             if (status === 200) {
-                router.push('/companies');
+                await router.push('/companies');
             } else {
                 console.error(data);
             }
@@ -83,7 +74,6 @@ const Page = () => {
     const hoursToDays = (hours) => {
         return parseInt(hours / 24);
     }
-
 
     const formik = useFormik({
         initialValues: {
@@ -123,6 +113,16 @@ const Page = () => {
         }
     });
 
+    const initialValues = {
+        name: (data) ? data?.name : '',
+        description: (data) ? data?.description : '',
+        price: (data) ? data?.price : 0,
+        duration: (data) ? hoursToDays(data?.duration) : 0
+    }
+    useEffect(() => {
+        formik.setValues(initialValues);
+    }, [data]);
+
     return (
         <>
             <Head>
@@ -155,6 +155,19 @@ const Page = () => {
                                 Editar Membresia
                             </Typography>
                         </Stack>
+
+                        {
+                            isLoading && (
+                                <LinearProgress />
+                            )
+                        }
+                        {
+                            isError && (
+                                <Typography variant="h4">
+                                    Error al cargar la membresia
+                                </Typography>
+                            )
+                        }
                         <form
                             noValidate
                             onSubmit={formik.handleSubmit}

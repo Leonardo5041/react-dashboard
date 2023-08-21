@@ -1,43 +1,43 @@
 import Head from 'next/head';
 import PlusIcon from '@heroicons/react/24/solid/PlusIcon';
 import {
-  Box,
-  Button,
-  Container,
-  Pagination,
-  Stack,
-  SvgIcon,
-  Typography,
-  Unstable_Grid2 as Grid
+    Box,
+    Button,
+    Container,
+    LinearProgress,
+    Pagination,
+    Stack,
+    SvgIcon,
+    Typography,
+    Unstable_Grid2 as Grid
 } from '@mui/material';
 import { Layout as DashboardLayout } from 'src/layouts/dashboard/layout';
 import { CompanyCard } from 'src/sections/companies/company-card';
 import { CompaniesSearch } from 'src/sections/companies/companies-search';
-import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useRouter } from 'next/router';
+import { useQuery } from '@tanstack/react-query';
 import { BACKEND_URL } from 'src/utils/get-initials';
-const Page = () => {
-  const router = useRouter();
-  const [memberships, setMemberships] = useState([]);
 
-  const fetchMemberships = async () => {
-    try {
-      const { data = null, status } = await axios.get(`${BACKEND_URL}membership`);
-      if (status !== 200) {
-        setMemberships([]);
-      } else {
-        setMemberships(data);
-      }
-    } catch(error) {
-      setMemberships([]);
+
+const fetchMemberships = async () => {
+  try {
+    const { data = null, status } = await axios.get(`${BACKEND_URL}membership`);
+    if (status !== 200) {
+      return [];
+    } else {
+      return data;
     }
+  } catch (error) {
+    return [];
   }
+};
+const Page = () => {
+  const { isLoading, isError, data: memberships = [] } = useQuery(['memberships'], async () => await fetchMemberships(), {
+    refetchOnWindowFocus: false,
+  })
+  const router = useRouter();
 
-  useEffect(() => {
-    fetchMemberships();
-  }, []);
-    
   return (
     <>
       <Head>
@@ -68,34 +68,14 @@ const Page = () => {
                   direction="row"
                   spacing={1}
                 >
-                  {/* <Button
-                    color="inherit"
-                    startIcon={(
-                      <SvgIcon fontSize="small">
-                        <ArrowUpOnSquareIcon />
-                      </SvgIcon>
-                    )}
-                  >
-                    Import
-                  </Button>
-                  <Button
-                    color="inherit"
-                    startIcon={(
-                      <SvgIcon fontSize="small">
-                        <ArrowDownOnSquareIcon />
-                      </SvgIcon>
-                    )}
-                  >
-                    Export
-                  </Button> */}
                 </Stack>
               </Stack>
               <div>
                 <Button
-                onClick={() => router.push('/memberships-new')}
+                  onClick={() => router.push('/memberships-new')}
                   startIcon={(
                     <SvgIcon fontSize="small">
-                      <PlusIcon />
+                      <PlusIcon/>
                     </SvgIcon>
                   )}
                   variant="contained"
@@ -104,11 +84,21 @@ const Page = () => {
                 </Button>
               </div>
             </Stack>
-            <CompaniesSearch />
+            <CompaniesSearch/>
             <Grid
               container
               spacing={3}
             >
+              {
+                isError && (
+                  <Typography variant="h4">
+                    Error al cargar los datos
+                  </Typography>
+                )
+              }
+              {isLoading && (
+                  <LinearProgress color="secondary" />
+              )}
               {memberships.map((membership) => (
                 <Grid
                   xs={12}
@@ -116,7 +106,7 @@ const Page = () => {
                   lg={4}
                   key={membership.id}
                 >
-                  <CompanyCard company={membership} />
+                  <CompanyCard company={membership}/>
                 </Grid>
               ))}
             </Grid>
@@ -136,7 +126,7 @@ const Page = () => {
       </Box>
     </>
   );
-}
+};
 
 Page.getLayout = (page) => (
   <DashboardLayout>

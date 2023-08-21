@@ -17,7 +17,7 @@ const welcomeAlert = ({access, message}) => {
         position: 'center',
         icon: (access) ? 'success' : 'error',
         // si tiene acceso mostrar Bienvenido y emoji feliz, si no mostrar Acceso denegado y emoji triste
-        text: (access) ? '👋 Pitbulls Gym 🏋🏻 te da la bienvenida 😀' : 'Acceso denegado',
+        text: (access) ? '👋 Acceso concedido 🏋🏻' : 'Acceso denegado',
         title: message,
         showConfirmButton: false,
         timer: 5000

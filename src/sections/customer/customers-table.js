@@ -78,7 +78,7 @@ export const CustomersTable = (props) => {
     // onSelectOne,
     page = 0,
     rowsPerPage = 0,
-    selected = []
+    //selected = []
   } = props;
 
   // const selectedSome = (selected.length > 0) && (selected.length < items.length);
@@ -125,12 +125,10 @@ export const CustomersTable = (props) => {
             </TableHead>
             <TableBody>
               {items.map((customer) => {
-                const isSelected = selected.includes(customer.id);
                 return (
                   <TableRow
                     hover
                     key={customer?.id}
-                    selected={isSelected}
                   >
                     <TableCell>
                       <Stack

@@ -13,9 +13,9 @@ const Page = () => {
   const registerClient = async (data) => {
     const { email, name, phone } = data;
     const request = {
-      email: email.trim(),
+      email: (email !== '') ? email.trim() : null,
       name: name.trim(),
-      phone: phone.trim()
+      phone: (phone !== '') ? phone.trim() : null,
     }
     try {
       const { data, status } = await axios.post(`${BACKEND_URL}clients`, request);
@@ -43,12 +43,12 @@ const Page = () => {
         .max(255),
       name: Yup
         .string()
-        .max(255)
-        .required('Nombre es requerido'),
+        .min(3, 'El nombre debe tener al menos 3 caracteres')
+        .max(155)
+        .required('El nombre es requerido'),
       phone: Yup
         .string()
-        .max(255)
-        .required('Numero de telefono es requerido')
+        .max(15, 'El número de teléfono debe tener maximo 15 caracteres')
     }),
     onSubmit: async (values, helpers) => {
       try {
@@ -103,7 +103,7 @@ const Page = () => {
                   fullWidth
                   required
                   helperText={formik.touched.name && formik.errors.name}
-                  label="Nombre"
+                  label="Nombre y apellido"
                   name="name"
                   onBlur={formik.handleBlur}
                   onChange={formik.handleChange}
@@ -113,9 +113,8 @@ const Page = () => {
                   error={!!(formik.touched.phone && formik.errors.phone)}
                   fullWidth
                   helperText={formik.touched.phone && formik.errors.phone}
-                  label="Telefono"
+                  label="Telefono (Opcional)"
                   name="phone"
-                  required
                   onBlur={formik.handleBlur}
                   onChange={formik.handleChange}
                   type="text"
