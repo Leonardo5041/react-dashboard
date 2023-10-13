@@ -68,7 +68,7 @@ export const OverviewTotalCustomers = (props) => {
               color="text.secondary"
               variant="caption"
             >
-              Subscipciones activas
+              Clientes con membresia activa
             </Typography>
           </Stack>
         )}

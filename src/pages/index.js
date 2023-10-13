@@ -1,5 +1,4 @@
 import Head from 'next/head';
-import { useState, useEffect } from 'react';
 import {
   Box,
   Card,
@@ -16,6 +15,7 @@ import { OverviewBudget } from 'src/sections/overview/overview-budget';
 import { BACKEND_URL } from 'src/utils/get-initials';
 import { useAuth } from '../hooks/use-auth';
 import { useQuery } from '@tanstack/react-query';
+import { OverviewTasksProgress } from '../sections/overview/overview-tasks-progress';
 
 const getSubscriptions = async () => {
   try {
@@ -51,13 +51,17 @@ const getClients = async () => {
 const Page = () => {
   const auth = useAuth();
   const { isLoading, isError, data: orders = [] } = useQuery(['orders'],
-    async () => await getSubscriptions());
+    async () => await getSubscriptions(), {
+    staleTime: 1000 * 60 * 5 // 5 minutes
+  });
   const { isLoading: isLoadingClients, isError: isErrorClients, data: clients = [] } = useQuery(['clients'],
-    async () => await getClients());
+    async () => await getClients(), {
+    staleTime: 1000 * 60 * 5 // 5 minutes
+  });
 
   const getPercentage = () => {
     const totalClients = clients.length;
-    const totalSubscriptions = orders.length;
+    const totalSubscriptions = getActiveMemberships();
     const percentage = (totalSubscriptions / totalClients) * 100;
     return parseInt(percentage.toFixed(2));
   };
@@ -66,6 +70,13 @@ const Page = () => {
     const inactiveClients = clients.filter((client) => client.active === false);
     return inactiveClients.length;
   };
+
+  const getActiveMemberships = () => {
+    let subscriptions = clients.map((client) => client?.subscription);
+    subscriptions = subscriptions.filter((subscription) => subscription !== null);
+    const activeMemberships = subscriptions.filter((order) => new Date(order?.end_date) > new Date());
+    return activeMemberships.length;
+  }
 
   return (
     <>
@@ -130,6 +141,13 @@ const Page = () => {
               sm={6}
               lg={3}
             >
+              <OverviewTasksProgress value={getActiveMemberships()} />
+            </Grid>
+            <Grid
+              xs={12}
+              sm={6}
+              lg={3}
+            >
               <OverviewTotalCustomers
                 difference={clients.length > 0 ? getPercentage() : null}
                 positive={clients.length > 0 ? (getPercentage() > 50) : false}
@@ -144,7 +162,7 @@ const Page = () => {
             >
               {
                 isLoading && (
-                  <LinearProgress/>
+                  <LinearProgress />
                 )
               }
               <OverviewLatestOrders

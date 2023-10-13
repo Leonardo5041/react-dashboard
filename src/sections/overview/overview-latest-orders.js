@@ -78,6 +78,8 @@ export const OverviewLatestOrders = (props) => {
                 return (
                   <TableRow
                     hover
+                    sx={{ cursor: 'pointer' }}
+                    onClick={() => router.push(`/customers/${order?.client?.id}`)}
                     key={order.id}
                   >
                     <TableCell>
