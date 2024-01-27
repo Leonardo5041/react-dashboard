@@ -9,8 +9,8 @@ export const getInitials = (name = '') => name
   .map((v) => v && v[0].toUpperCase())
   .join('');
 
-
-export const BACKEND_URL = 'https://p70ny5tlre.execute-api.us-east-1.amazonaws.com/prod/'
+export const BACKEND_URL = 'https://hq86a5j0lj.execute-api.us-east-1.amazonaws.com/dev/'
+//export const BACKEND_URL = 'https://p70ny5tlre.execute-api.us-east-1.amazonaws.com/prod/'
 //export const BACKEND_URL = 'http://192.168.100.7:2112/'
 
 export const confirmAlert = async (message) => {

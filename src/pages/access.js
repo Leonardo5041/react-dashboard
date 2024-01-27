@@ -1,7 +1,5 @@
 import {useEffect, useRef, useState} from 'react';
 import Head from 'next/head';
-import {useFormik} from 'formik';
-import * as Yup from 'yup';
 import {
     Box,
     LinearProgress,
@@ -9,9 +7,7 @@ import {
 } from '@mui/material';
 import {Layout as AccessLayout} from 'src/layouts/access/layout';
 import Swal from 'sweetalert2';
-import {socket} from "../socket";
-
-
+import { SOCKET_URL } from '../socket';
 const welcomeAlert = ({access, message}) => {
     Swal.fire({
         position: 'center',
@@ -24,12 +20,14 @@ const welcomeAlert = ({access, message}) => {
     })
 }
 const Page = () => {
+    const socket = useRef(null);
     const [progress, setProgress] = useState(0);
     const [buffer, setBuffer] = useState(10);
 
     const progressRef = useRef(() => {
     });
     useEffect(() => {
+        socket.current = new WebSocket(SOCKET_URL);
         progressRef.current = () => {
             if (progress > 100) {
                 setProgress(0);
@@ -41,63 +39,42 @@ const Page = () => {
                 setBuffer(progress + diff + diff2);
             }
         };
-    });
+        socket.current.onopen = () => {
+        }
 
-    useEffect(() => {
+        socket.current.onmessage = (event) => {
+            const data = JSON.parse(event?.data);
+            if (data?.access !== undefined && data?.message) {
+                welcomeAlert({access: data?.access, message: data?.message});
+            }
+        }
+
         const timer = setInterval(() => {
             progressRef.current();
         }, 500);
 
         return () => {
-            clearInterval(timer);
-        };
-    }, []);
-
-    //connect to socket server
-    useEffect(() => {
-        socket.on('connect', () => {
-            console.log('connected to socket server');
-        });
-        socket.on('access', (data) => {
-            welcomeAlert({access: data?.access, message: data?.message});
-        });
-
-        return () => {
-            socket.off('access');
+          if (socket.current.readyState === WebSocket.OPEN) {
+              socket.current.close();
+          }
+          socket.current.close();
+          clearInterval(timer);
         }
     }, []);
 
-    const formik = useFormik({
-        initialValues: {
-            client_number: 0,
-            token: '',
-            submit: null
-        },
-        validationSchema: Yup.object({
-            client_number: Yup
-                .string()
-                .min(1, 'Ingrese un numero de cliente valido')
-                .max(999)
-                .required('Numero de cliente requerido'),
-            token: Yup
-                .string()
-                .min(1, 'Ingrese un token valido')
-                .max(10, 'Ingrese un token valido de 6 digitos')
-                .required('Para acceder necesita un código de acceso')
-        }),
-        onSubmit: async (values) => {
-            socket.emit('access', {
-                client_number: values.client_number,
-                token: values.token
-            });
-
-            socket.on('access', (data) => {
-                console.log(data);
-                welcomeAlert({access: data?.access, message: data?.message});
-                formik.resetForm();
-            });
-        }
-    });
+    // //connect to socket server
+    // useEffect(() => {
+    //     socket.onopen = () => {
+    //
+    //     }
+    //     socket.on('access', (data) => {
+    //         welcomeAlert({access: data?.access, message: data?.message});
+    //     });
+    //
+    //     return () => {
+    //         socket.off('access');
+    //     }
+    // }, []);
 
 
     return (
