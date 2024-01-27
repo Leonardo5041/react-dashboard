@@ -128,7 +128,9 @@ export const CustomersTable = (props) => {
                 return (
                   <TableRow
                     hover
+                    sx={{ cursor: 'pointer' }}
                     key={customer?.id}
+                    onClick={() => router.push(`/customers/${customer.id}`)}
                   >
                     <TableCell>
                       <Stack
