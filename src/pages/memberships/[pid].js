@@ -38,7 +38,7 @@ const Page = () => {
             duration
         }
         request.price = parseFloat(request.price);
-        request.duration = daysToHours(parseInt(request.duration));
+        request.duration = parseInt(request.duration);
         try {
             const { data, status } = await axios.patch(`${BACKEND_URL}membership/${pid}`, request);
             if (status === 200) {
@@ -64,15 +64,6 @@ const Page = () => {
         } catch (err) {
             console.error(err);
         }
-    }
-
-
-    const daysToHours = (days) => {
-        return days * 24;
-    }
-
-    const hoursToDays = (hours) => {
-        return parseInt(hours / 24);
     }
 
     const formik = useFormik({
@@ -117,7 +108,7 @@ const Page = () => {
         name: (data) ? data?.name : '',
         description: (data) ? data?.description : '',
         price: (data) ? data?.price : 0,
-        duration: (data) ? hoursToDays(data?.duration) : 0
+        duration: (data) ? data?.duration : 0
     }
     useEffect(() => {
         formik.setValues(initialValues);

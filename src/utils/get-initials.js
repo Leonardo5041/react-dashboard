@@ -28,5 +28,5 @@ export const confirmAlert = async (message) => {
 
 export const formatDateTime = (dateRequest) => {
   if (!dateRequest) return '';
-  return moment(dateRequest).utc(false).format('LL').toUpperCase();
+  return moment(dateRequest).utc(true).format('LL').toUpperCase();
 }

@@ -7,7 +7,7 @@ import { createTypography } from './create-typography';
 export function createTheme() {
   const date = new Date().toLocaleString('es-MX', { timeZone: 'America/Mexico_City' });
   const hour = parseInt(date.split(' ')[1].split(':')[0]);
-  const isDark = hour >= 18 || hour <= 7;
+  const isDark = hour >= 17 || hour <= 7;
   const palette = createPalette(isDark);
   const components = createComponents({ palette });
   const shadows = createShadows();

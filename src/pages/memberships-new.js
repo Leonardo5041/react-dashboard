@@ -19,7 +19,7 @@ const Page = () => {
             duration
         }
         request.price = parseFloat(request.price);
-        request.duration = daysToHours(parseInt(request.duration));
+        request.duration = parseInt(request.duration);
         try {
             const { data, status } = await axios.post(`${BACKEND_URL}membership`, request);
             if (status === 201) {

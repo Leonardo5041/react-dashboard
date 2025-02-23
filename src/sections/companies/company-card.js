@@ -69,7 +69,7 @@ export const CompanyCard = (props) => {
             display="inline"
             variant="body2"
           >
-            Duración: {(company?.duration) ? Math.round(company.duration / 24) : N/A } días
+            Duración: {company?.duration} días
           </Typography>
         </Stack>
         <Stack

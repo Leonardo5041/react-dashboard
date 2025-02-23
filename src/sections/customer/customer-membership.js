@@ -15,6 +15,7 @@ import axios from 'axios';
 import {useRouter} from 'next/router';
 import {BACKEND_URL} from 'src/utils/get-initials';
 import {DatePicker} from '@mui/x-date-pickers';
+import * as moment from 'moment';
 
 export const CustomerMembership = ({user}) => {
     const router = useRouter();
@@ -46,10 +47,9 @@ export const CustomerMembership = ({user}) => {
             subscription: user?.subscription?.id,
             end_date: user?.subscription?.end_date
         });
-        let endDate = new Date(user?.subscription?.end_date);
-        endDate.setDate(endDate.getDate() + 1);
+        let endDate = moment(user?.subscription?.end_date).toDate();
         setEndDate(endDate);
-        setStartDate(new Date(user?.subscription?.start_date));
+        setStartDate(moment(user?.subscription?.start_date).toDate());
         getSubscription(user?.subscription?.id);
     }, [user]);
 
@@ -84,8 +84,8 @@ export const CustomerMembership = ({user}) => {
         });
         const selectedMembership = memberships.find((membership) => membership.id
             === event.target.value);
-        setStartDate(new Date());
-        const endDateNumber = new Date().setHours(selectedMembership?.duration);
+        setStartDate(moment().toDate());
+        const endDateNumber = moment().add(selectedMembership?.duration, 'days').toDate();
         setEndDate(new Date(endDateNumber));
     };
 
@@ -128,8 +128,8 @@ export const CustomerMembership = ({user}) => {
         setStartDate(newValue);
         const selectedMembership = memberships.find((membership) => membership.id
             === values.membership_id);
-        const endDateNumber = new Date(newValue).setHours(selectedMembership?.duration);
-        setEndDate(new Date(endDateNumber));
+        const endDateNumber = moment(newValue).add(selectedMembership?.duration, 'days').toDate();
+        setEndDate(endDateNumber);
     };
     return (
         <form
