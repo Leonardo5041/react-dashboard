@@ -19,7 +19,22 @@ import { OverviewTasksProgress } from '../sections/overview/overview-tasks-progr
 
 const getSubscriptions = async () => {
   try {
-    const { data, status } = await axios.get(`${BACKEND_URL}subscription`);
+    const { data, status } = await axios.get(`${BACKEND_URL}subscription/expiring`);
+    if (status !== 200) {
+      return [];
+    } else {
+      return data;
+    }
+  } catch (error) {
+    return [];
+  }
+};
+
+const expiringSubscriptions = async (filter) => {
+  try {
+    const { data, status } = await axios.get(`${BACKEND_URL}subscription/filter-by-expiration`, {
+      params: { filter }
+    });
     if (status !== 200) {
       return [];
     } else {
@@ -166,6 +181,7 @@ const Page = () => {
                 )
               }
               <OverviewLatestOrders
+                expiringSubscriptions={expiringSubscriptions}
                 orders={orders}
                 sx={{ height: '100%' }}
               />

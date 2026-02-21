@@ -30,6 +30,7 @@
     "dotenv": "^16.3.1",
     "formik": "2.2.9",
     "moment": "^2.29.4",
+    "moment-timezone": "^0.5.47",
     "next": "13.1.6",
     "nprogress": "0.2.0",
     "prop-types": "15.8.1",

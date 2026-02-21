@@ -1,5 +1,5 @@
-import { format } from 'date-fns';
 import PropTypes from 'prop-types';
+import { useState } from 'react';
 import ArrowRightIcon from '@heroicons/react/24/solid/ArrowRightIcon';
 import {
   Box,
@@ -8,6 +8,10 @@ import {
   CardActions,
   CardHeader,
   Divider,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select,
   SvgIcon,
   Table,
   TableBody,
@@ -18,6 +22,7 @@ import {
 import { Scrollbar } from 'src/components/scrollbar';
 import { SeverityPill } from 'src/components/severity-pill';
 import { useRouter } from 'next/router';
+import { useQuery } from '@tanstack/react-query';
 import { formatDateTime } from '../../utils/get-initials';
 
 
@@ -41,13 +46,53 @@ const getStatusColor = (endDate) => {
   }
 };
 
+const EXPIRATION_FILTERS = {
+  day: 'Hoy',
+  week: 'Esta semana',
+  month: 'Este mes'
+};
+
 export const OverviewLatestOrders = (props) => {
   const router = useRouter();
-  const { orders = [], sx } = props;
+  const { expiringSubscriptions, orders = [], sx } = props;
+  const [expirationFilter, setExpirationFilter] = useState('week');
+
+  const { data: filteredOrders = orders } = useQuery(['orders-by-expiration', expirationFilter],
+    async () => await expiringSubscriptions(expirationFilter), {
+    keepPreviousData: true,
+    enabled: Boolean(expiringSubscriptions),
+    staleTime: 1000 * 60
+  });
 
   return (
     <Card sx={sx}>
-      <CardHeader title="Subscripciones" />
+      <CardHeader
+        action={(
+          <FormControl
+            size="small"
+            sx={{ minWidth: 140 }}
+          >
+            <InputLabel id="expiration-filter-label">Expira</InputLabel>
+            <Select
+              labelId="expiration-filter-label"
+              id="expiration-filter"
+              value={expirationFilter}
+              label="Expira en"
+              onChange={(event) => setExpirationFilter(event.target.value)}
+            >
+              {Object.entries(EXPIRATION_FILTERS).map(([value, label]) => (
+                <MenuItem
+                  key={value}
+                  value={value}
+                >
+                  {label}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        )}
+        title="Subscripciones próximas a expirar"
+      />
       <Scrollbar sx={{ flexGrow: 1 }}>
         <Box sx={{ minWidth: 800 }}>
           <Table>
@@ -71,7 +116,7 @@ export const OverviewLatestOrders = (props) => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {orders.map((order) => {
+              {filteredOrders.map((order) => {
                 const createdAt = formatDateTime(order.start_date);
                 const expirationAt = formatDateTime(order.end_date);
 
@@ -102,6 +147,16 @@ export const OverviewLatestOrders = (props) => {
                   </TableRow>
                 );
               })}
+              {filteredOrders.length === 0 && (
+                <TableRow>
+                  <TableCell
+                    colSpan={5}
+                    align="center"
+                  >
+                    No hay subscripciones que expiren en este rango.
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </Box>
@@ -127,6 +182,7 @@ export const OverviewLatestOrders = (props) => {
 };
 
 OverviewLatestOrders.prototype = {
+  expiringSubscriptions: PropTypes.func,
   orders: PropTypes.array,
   sx: PropTypes.object
 };

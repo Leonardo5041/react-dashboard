@@ -15,7 +15,7 @@ import axios from 'axios';
 import {useRouter} from 'next/router';
 import {BACKEND_URL} from 'src/utils/get-initials';
 import {DatePicker} from '@mui/x-date-pickers';
-import * as moment from 'moment';
+import * as moment from 'moment-timezone';
 
 export const CustomerMembership = ({user}) => {
     const router = useRouter();
@@ -47,9 +47,9 @@ export const CustomerMembership = ({user}) => {
             subscription: user?.subscription?.id,
             end_date: user?.subscription?.end_date
         });
-        let endDate = moment(user?.subscription?.end_date).toDate();
+        const endDate = moment.tz(user?.subscription?.end_date, 'America/Mexico_City').toDate();
         setEndDate(endDate);
-        setStartDate(moment(user?.subscription?.start_date).toDate());
+        setStartDate(moment.tz(user?.subscription?.start_date, 'America/Mexico_City').toDate());
         getSubscription(user?.subscription?.id);
     }, [user]);
 
@@ -84,9 +84,9 @@ export const CustomerMembership = ({user}) => {
         });
         const selectedMembership = memberships.find((membership) => membership.id
             === event.target.value);
-        setStartDate(moment().toDate());
-        const endDateNumber = moment().add(selectedMembership?.duration, 'days').toDate();
-        setEndDate(new Date(endDateNumber));
+        setStartDate(moment.tz('America/Mexico_City').toDate());
+        const endDateNumber = moment.tz('America/Mexico_City').add(selectedMembership?.duration, 'days').toDate();
+        setEndDate(endDateNumber);
     };
 
     const handleSubmit = async (event) => {
@@ -125,10 +125,10 @@ export const CustomerMembership = ({user}) => {
     };
 
     const handleStartDateChange = (newValue) => {
-        setStartDate(newValue);
+        setStartDate(moment.tz(newValue, 'America/Mexico_City').toDate());
         const selectedMembership = memberships.find((membership) => membership.id
             === values.membership_id);
-        const endDateNumber = moment(newValue).add(selectedMembership?.duration, 'days').toDate();
+        const endDateNumber = moment.tz(newValue, 'America/Mexico_City').add(selectedMembership?.duration, 'days').toDate();
         setEndDate(endDateNumber);
     };
     return (
