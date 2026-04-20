@@ -42,8 +42,11 @@ const Page = () => {
     { refetchOnWindowFocus: false }
   );
 
+  const itemsLabel = (venta) =>
+    (venta.items || []).map((i) => i.cantidad > 1 ? `${i.producto} ×${i.cantidad}` : i.producto).join(', ');
+
   const handleAnular = async (venta) => {
-    const result = await confirmAlert(`¿Anular la venta de "${venta.producto}"?`);
+    const result = await confirmAlert(`¿Anular la venta #${venta.id} (${itemsLabel(venta)})?`);
     if (!result.isConfirmed) return;
     try {
       const { status } = await axios.delete(`${PRODUCTS_URL}ventas/${venta.id}`);
@@ -74,8 +77,8 @@ const Page = () => {
                 <TableHead>
                   <TableRow>
                     <TableCell>#</TableCell>
-                    <TableCell>Producto</TableCell>
-                    <TableCell>Monto</TableCell>
+                    <TableCell>Productos</TableCell>
+                    <TableCell>Total</TableCell>
                     <TableCell>Método</TableCell>
                     <TableCell>Fecha</TableCell>
                     <TableCell align="right">Anular</TableCell>
@@ -92,8 +95,8 @@ const Page = () => {
                   {ventas.map((venta) => (
                     <TableRow key={venta.id} hover>
                       <TableCell>{venta.id}</TableCell>
-                      <TableCell>{venta.producto}</TableCell>
-                      <TableCell>${venta.monto} MXN</TableCell>
+                      <TableCell>{itemsLabel(venta)}</TableCell>
+                      <TableCell>${Number(venta.total).toFixed(2)} MXN</TableCell>
                       <TableCell>
                         <Chip
                           label={venta.metodo}

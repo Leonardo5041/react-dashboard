@@ -32,3 +32,8 @@ export const formatDateTime = (dateRequest) => {
   if (!dateRequest) return '';
   return moment(dateRequest).utc(true).format('LL').toUpperCase();
 }
+
+export const formatTime = (dateRequest) => {
+  if (!dateRequest) return '';
+  return moment(dateRequest).format('HH:mm:ss');
+}

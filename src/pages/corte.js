@@ -18,7 +18,7 @@ import {
 import { Layout as DashboardLayout } from 'src/layouts/dashboard/layout';
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
-import { PRODUCTS_URL, formatDateTime } from 'src/utils/get-initials';
+import { PRODUCTS_URL, formatTime } from 'src/utils/get-initials';
 
 const METODO_COLOR = {
   Efectivo: 'success',
@@ -97,8 +97,8 @@ const Page = () => {
                 <TableHead>
                   <TableRow>
                     <TableCell>#</TableCell>
-                    <TableCell>Producto</TableCell>
-                    <TableCell>Monto</TableCell>
+                    <TableCell>Productos</TableCell>
+                    <TableCell>Total</TableCell>
                     <TableCell>Método</TableCell>
                     <TableCell>Hora</TableCell>
                   </TableRow>
@@ -116,8 +116,12 @@ const Page = () => {
                   {ventas.map((venta) => (
                     <TableRow key={venta.id} hover>
                       <TableCell>{venta.id}</TableCell>
-                      <TableCell>{venta.producto}</TableCell>
-                      <TableCell>${venta.monto} MXN</TableCell>
+                      <TableCell>
+                        {(venta.items || []).map((i) =>
+                          i.cantidad > 1 ? `${i.producto} ×${i.cantidad}` : i.producto
+                        ).join(', ')}
+                      </TableCell>
+                      <TableCell>${Number(venta.total).toFixed(2)} MXN</TableCell>
                       <TableCell>
                         <Chip
                           label={venta.metodo}
@@ -125,7 +129,7 @@ const Page = () => {
                           size="small"
                         />
                       </TableCell>
-                      <TableCell>{formatDateTime(venta.fecha)}</TableCell>
+                      <TableCell>{formatTime(venta.fecha)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

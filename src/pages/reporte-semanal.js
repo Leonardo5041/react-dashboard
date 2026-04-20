@@ -92,8 +92,8 @@ const DiaRow = ({ dia }) => {
                   <TableHead>
                     <TableRow>
                       <TableCell>#</TableCell>
-                      <TableCell>Producto</TableCell>
-                      <TableCell>Monto</TableCell>
+                      <TableCell>Productos</TableCell>
+                      <TableCell>Total</TableCell>
                       <TableCell>Método</TableCell>
                       <TableCell>Fecha</TableCell>
                     </TableRow>
@@ -102,8 +102,12 @@ const DiaRow = ({ dia }) => {
                     {(dia.ventas || []).map((venta) => (
                       <TableRow key={venta.id}>
                         <TableCell>{venta.id}</TableCell>
-                        <TableCell>{venta.producto}</TableCell>
-                        <TableCell>${venta.monto} MXN</TableCell>
+                        <TableCell>
+                          {(venta.items || []).map((item) =>
+                            item.cantidad > 1 ? `${item.producto} ×${item.cantidad}` : item.producto
+                          ).join(', ')}
+                        </TableCell>
+                        <TableCell>${Number(venta.total).toFixed(2)} MXN</TableCell>
                         <TableCell>
                           <Chip label={venta.metodo} color={METODO_COLOR[venta.metodo] || 'default'} size="small" />
                         </TableCell>
