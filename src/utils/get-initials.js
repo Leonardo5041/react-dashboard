@@ -10,6 +10,8 @@ export const getInitials = (name = '') => name
   .join('');
 
 export const BACKEND_URL = 'https://hq86a5j0lj.execute-api.us-east-1.amazonaws.com/dev/'
+export const PRODUCTS_URL = 'https://1k0eontip5.execute-api.us-east-1.amazonaws.com/dev/api/v1/'
+//export const PRODUCTS_URL = 'http://localhost:8080/api/v1/'
 //export const BACKEND_URL = 'https://p70ny5tlre.execute-api.us-east-1.amazonaws.com/prod/'
 // export const BACKEND_URL = 'http://localhost:2112/'
 
