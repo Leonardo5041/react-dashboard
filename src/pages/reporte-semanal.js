@@ -1,4 +1,5 @@
 import Head from 'next/head';
+import { PinGuard } from 'src/components/pin-guard';
 import dynamic from 'next/dynamic';
 import {
   Box,
@@ -25,7 +26,7 @@ import { Layout as DashboardLayout } from 'src/layouts/dashboard/layout';
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
 import { PRODUCTS_URL, formatDateTime } from 'src/utils/get-initials';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 
 const Chart = dynamic(() => import('react-apexcharts'), { ssr: false });
 
@@ -48,9 +49,25 @@ const SummaryCard = ({ label, value, highlight }) => (
   </Card>
 );
 
+const toISO = (fecha) => fecha.split('-').reverse().join('-');
+
 const DiaRow = ({ dia }) => {
   const [open, setOpen] = useState(false);
+  const [ventas, setVentas] = useState(null);
+  const [loadingVentas, setLoadingVentas] = useState(false);
+  const [errorVentas, setErrorVentas] = useState(false);
   const hasVentas = dia.numVentas > 0;
+
+  useEffect(() => {
+    if (!open || ventas !== null) return;
+    const fechaISO = toISO(dia.fecha);
+    setLoadingVentas(true);
+    setErrorVentas(false);
+    axios.get(`${PRODUCTS_URL}corte/semanal/${fechaISO}`)
+      .then(({ data }) => setVentas(data.ventas || []))
+      .catch(() => setErrorVentas(true))
+      .finally(() => setLoadingVentas(false));
+  }, [open]);
 
   return (
     <>
@@ -88,34 +105,42 @@ const DiaRow = ({ dia }) => {
           <TableCell colSpan={7} sx={{ py: 0, bgcolor: 'action.hover' }}>
             <Collapse in={open} timeout="auto" unmountOnExit>
               <Box sx={{ px: 4, py: 1 }}>
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>#</TableCell>
-                      <TableCell>Productos</TableCell>
-                      <TableCell>Total</TableCell>
-                      <TableCell>Método</TableCell>
-                      <TableCell>Fecha</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {(dia.ventas || []).map((venta) => (
-                      <TableRow key={venta.id}>
-                        <TableCell>{venta.id}</TableCell>
-                        <TableCell>
-                          {(venta.items || []).map((item) =>
-                            item.cantidad > 1 ? `${item.producto} ×${item.cantidad}` : item.producto
-                          ).join(', ')}
-                        </TableCell>
-                        <TableCell>${Number(venta.total).toFixed(2)} MXN</TableCell>
-                        <TableCell>
-                          <Chip label={venta.metodo} color={METODO_COLOR[venta.metodo] || 'default'} size="small" />
-                        </TableCell>
-                        <TableCell>{formatDateTime(venta.fecha)}</TableCell>
+                {loadingVentas && <LinearProgress color="secondary" />}
+                {errorVentas && (
+                  <Typography color="error" variant="body2" sx={{ py: 1 }}>
+                    Error al cargar el desglose del día
+                  </Typography>
+                )}
+                {!loadingVentas && !errorVentas && ventas !== null && (
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>#</TableCell>
+                        <TableCell>Productos</TableCell>
+                        <TableCell>Total</TableCell>
+                        <TableCell>Método</TableCell>
+                        <TableCell>Fecha</TableCell>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHead>
+                    <TableBody>
+                      {ventas.map((venta) => (
+                        <TableRow key={venta.id}>
+                          <TableCell>{venta.id}</TableCell>
+                          <TableCell>
+                            {(venta.items || []).map((item) =>
+                              item.cantidad > 1 ? `${item.producto} ×${item.cantidad}` : item.producto
+                            ).join(', ')}
+                          </TableCell>
+                          <TableCell>${Number(venta.total).toFixed(2)} MXN</TableCell>
+                          <TableCell>
+                            <Chip label={venta.metodo} color={METODO_COLOR[venta.metodo] || 'default'} size="small" />
+                          </TableCell>
+                          <TableCell>{formatDateTime(venta.fecha)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
               </Box>
             </Collapse>
           </TableCell>
@@ -152,7 +177,7 @@ const Page = () => {
   }), [dias]);
 
   return (
-    <>
+    <PinGuard>
       <Head>
         <title>Reporte Semanal | Pitbulls Gym</title>
       </Head>
@@ -244,7 +269,7 @@ const Page = () => {
           </Stack>
         </Container>
       </Box>
-    </>
+    </PinGuard>
   );
 };
 

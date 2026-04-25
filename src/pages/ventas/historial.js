@@ -1,6 +1,9 @@
+import { useState } from 'react';
 import Head from 'next/head';
+import { PinGuard } from 'src/components/pin-guard';
 import {
   Box,
+  Button,
   Card,
   Chip,
   Container,
@@ -13,6 +16,7 @@ import {
   TableCell,
   TableHead,
   TableRow,
+  TextField,
   Typography
 } from '@mui/material';
 import TrashIcon from '@heroicons/react/24/solid/TrashIcon';
@@ -21,6 +25,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { PRODUCTS_URL, confirmAlert, formatDateTime } from 'src/utils/get-initials';
 import Swal from 'sweetalert2';
+import { DatePicker } from '@mui/x-date-pickers';
+import * as moment from 'moment-timezone';
 
 const METODO_COLOR = {
   Efectivo: 'success',
@@ -28,19 +34,33 @@ const METODO_COLOR = {
   Transferencia: 'warning'
 };
 
-const fetchHistorial = async () => {
-  const { data, status } = await axios.get(`${PRODUCTS_URL}ventas/historial`);
-  if (status !== 200) return [];
-  return data?.ventas || [];
+const todayMX = () => moment.tz('America/Mexico_City').toDate();
+
+const fetchHistorial = async (desde, hasta) => {
+  const { data, status } = await axios.get(
+    `${PRODUCTS_URL}ventas/historial?desde=${desde}&hasta=${hasta}`
+  );
+  if (status !== 200) return { ventas: [], desde, hasta, total: 0 };
+  return data;
 };
 
 const Page = () => {
   const queryClient = useQueryClient();
-  const { isLoading, isError, data: ventas = [] } = useQuery(
-    ['ventas-historial'],
-    fetchHistorial,
+  const [fechaDesde, setFechaDesde] = useState(todayMX());
+  const [fechaHasta, setFechaHasta] = useState(todayMX());
+
+  const desde = moment(fechaDesde).format('YYYY-MM-DD');
+  const hasta = moment(fechaHasta).format('YYYY-MM-DD');
+
+  const { isLoading, isError, data = {}, refetch } = useQuery(
+    ['ventas-historial', desde, hasta],
+    () => fetchHistorial(desde, hasta),
     { refetchOnWindowFocus: false }
   );
+
+  const ventas = data.ventas || [];
+
+  const handleBuscar = () => refetch();
 
   const itemsLabel = (venta) =>
     (venta.items || []).map((i) => i.cantidad > 1 ? `${i.producto} ×${i.cantidad}` : i.producto).join(', ');
@@ -60,7 +80,7 @@ const Page = () => {
   };
 
   return (
-    <>
+    <PinGuard>
       <Head>
         <title>Historial de Ventas | Pitbulls Gym</title>
       </Head>
@@ -68,6 +88,28 @@ const Page = () => {
         <Container maxWidth="xl">
           <Stack spacing={3}>
             <Typography variant="h4">Historial de Ventas</Typography>
+
+            <Stack direction="row" spacing={2} alignItems="center">
+              <DatePicker
+                disableMaskedInput={true}
+                label="Desde"
+                value={fechaDesde}
+                onChange={(newValue) => setFechaDesde(newValue)}
+                inputFormat="dd/MMM/yyyy"
+                renderInput={(params) => <TextField variant="outlined" {...params} />}
+              />
+              <DatePicker
+                disableMaskedInput={true}
+                label="Hasta"
+                value={fechaHasta}
+                onChange={(newValue) => setFechaHasta(newValue)}
+                inputFormat="dd/MMM/yyyy"
+                renderInput={(params) => <TextField variant="outlined" {...params} />}
+              />
+              <Button variant="contained" onClick={handleBuscar}>
+                Buscar
+              </Button>
+            </Stack>
 
             {isLoading && <LinearProgress color="secondary" />}
             {isError && <Typography color="error">Error al cargar el historial</Typography>}
@@ -118,7 +160,7 @@ const Page = () => {
           </Stack>
         </Container>
       </Box>
-    </>
+    </PinGuard>
   );
 };
 

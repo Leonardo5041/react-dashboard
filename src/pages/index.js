@@ -1,5 +1,7 @@
 import Head from 'next/head';
+import { useRouter } from 'next/router';
 import {
+  Alert,
   Box,
   Card,
   Container,
@@ -12,10 +14,20 @@ import { OverviewLatestOrders } from 'src/sections/overview/overview-latest-orde
 import { OverviewTotalCustomers } from 'src/sections/overview/overview-total-customers';
 import axios from 'axios';
 import { OverviewBudget } from 'src/sections/overview/overview-budget';
-import { BACKEND_URL } from 'src/utils/get-initials';
+import { BACKEND_URL, PRODUCTS_URL } from 'src/utils/get-initials';
 import { useAuth } from '../hooks/use-auth';
 import { useQuery } from '@tanstack/react-query';
 import { OverviewTasksProgress } from '../sections/overview/overview-tasks-progress';
+
+const fetchAlertasInventario = async () => {
+  try {
+    const { data, status } = await axios.get(`${PRODUCTS_URL}inventario/alertas`);
+    if (status !== 200) return null;
+    return data;
+  } catch {
+    return null;
+  }
+};
 
 const getSubscriptions = async () => {
   try {
@@ -65,6 +77,7 @@ const getClients = async () => {
 
 const Page = () => {
   const auth = useAuth();
+  const router = useRouter();
   const { isLoading, isError, data: orders = [] } = useQuery(['orders'],
     async () => await getSubscriptions(), {
     staleTime: 1000 * 60 * 5 // 5 minutes
@@ -73,6 +86,12 @@ const Page = () => {
     async () => await getClients(), {
     staleTime: 1000 * 60 * 5 // 5 minutes
   });
+  const { data: alertasData } = useQuery(['inventario-alertas'], fetchAlertasInventario, {
+    staleTime: 1000 * 60 * 5
+  });
+
+  const alertas = alertasData?.alertas || [];
+  const hayAlertas = alertasData?.estado === 'ALERTA';
 
   const getPercentage = () => {
     const totalClients = clients.length;
@@ -170,6 +189,21 @@ const Page = () => {
                 value={String(clients?.length)}
               />
             </Grid>
+            {hayAlertas && (
+              <Grid xs={12}>
+                <Alert
+                  severity="warning"
+                  sx={{ cursor: 'pointer' }}
+                  onClick={() => router.push('/inventario')}
+                >
+                  <strong>Stock bajo en {alertasData.cantidad} producto(s):</strong>{' '}
+                  {alertas.map((a) => `${a.producto} (${a.stockActual}/${a.stockMinimo})`).join(', ')}
+                  {' — '}
+                  <u>Click aqui para ir al inventario</u>
+                </Alert>
+              </Grid>
+            )}
+
             <Grid
               xs={12}
               md={12}

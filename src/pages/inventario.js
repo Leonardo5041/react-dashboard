@@ -1,5 +1,6 @@
 import Head from 'next/head';
 import { useState } from 'react';
+import { PinGuard } from 'src/components/pin-guard';
 import {
   Alert,
   Box,
@@ -89,7 +90,7 @@ const Page = () => {
   const productos = estado?.productos || [];
 
   return (
-    <>
+    <PinGuard>
       <Head>
         <title>Inventario | Pitbulls Gym</title>
       </Head>
@@ -216,7 +217,7 @@ const Page = () => {
           </Button>
         </DialogActions>
       </Dialog>
-    </>
+    </PinGuard>
   );
 };
 
