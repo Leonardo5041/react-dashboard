@@ -17,6 +17,7 @@ import {
   TableCell,
   TableHead,
   TableRow,
+  Tooltip,
   Typography,
   Unstable_Grid2 as Grid
 } from '@mui/material';
@@ -136,9 +137,11 @@ const DiaRow = ({ dia }) => {
                         <TableRow key={venta.id}>
                           <TableCell>{venta.id}</TableCell>
                           <TableCell>
-                            {(venta.items || []).map((item) =>
-                              item.cantidad > 1 ? `${item.producto} ×${item.cantidad}` : item.producto
-                            ).join(', ')}
+                            {venta.descripcion
+                              ? venta.descripcion
+                              : (venta.items || []).map((item) =>
+                                  item.cantidad > 1 ? `${item.producto} ×${item.cantidad}` : item.producto
+                                ).join(', ')}
                           </TableCell>
                           <TableCell>${Number(venta.total).toFixed(2)} MXN</TableCell>
                           <TableCell>
@@ -232,12 +235,14 @@ const Page = () => {
               </Grid>
               {(reporte?.totalGastos ?? 0) > 0 && (
                 <Grid xs={12} sm={6} md={3}>
-                  <Card sx={{ bgcolor: 'error.main', color: 'error.contrastText' }}>
-                    <CardContent>
-                      <Typography variant="overline" sx={{ opacity: 0.8 }}>Gastos internos</Typography>
-                      <Typography variant="h5">${reporte?.totalGastos?.toFixed(2) ?? '0.00'} MXN</Typography>
-                    </CardContent>
-                  </Card>
+                  <Tooltip title="Gastos de inventario y gastos libres. No están incluidos en el total de ingresos.">
+                    <Card sx={{ bgcolor: 'error.main', color: 'error.contrastText', cursor: 'default' }}>
+                      <CardContent>
+                        <Typography variant="overline" sx={{ opacity: 0.8 }}>Gastos internos</Typography>
+                        <Typography variant="h5">${reporte?.totalGastos?.toFixed(2) ?? '0.00'} MXN</Typography>
+                      </CardContent>
+                    </Card>
+                  </Tooltip>
                 </Grid>
               )}
             </Grid>

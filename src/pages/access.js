@@ -19,15 +19,21 @@ const welcomeAlert = ({access, message}) => {
         timer: 5000
     })
 }
+const RECONNECT_BASE_MS = 1000;
+const RECONNECT_MAX_MS = 30000;
+
 const Page = () => {
     const socket = useRef(null);
+    const reconnectTimer = useRef(null);
+    const attempt = useRef(0);
+    const mounted = useRef(true);
+    const [connected, setConnected] = useState(false);
     const [progress, setProgress] = useState(0);
     const [buffer, setBuffer] = useState(10);
 
-    const progressRef = useRef(() => {
-    });
+    const progressRef = useRef(() => {});
+
     useEffect(() => {
-        socket.current = new WebSocket(SOCKET_URL);
         progressRef.current = () => {
             if (progress > 100) {
                 setProgress(0);
@@ -39,42 +45,51 @@ const Page = () => {
                 setBuffer(progress + diff + diff2);
             }
         };
-        socket.current.onopen = () => {
-        }
+    });
 
-        socket.current.onmessage = (event) => {
-            const data = JSON.parse(event?.data);
-            if (data?.access !== undefined && data?.message) {
-                welcomeAlert({access: data?.access, message: data?.message});
-            }
-        }
+    useEffect(() => {
+        mounted.current = true;
 
-        const timer = setInterval(() => {
-            progressRef.current();
-        }, 500);
+        const connect = () => {
+            if (!mounted.current) return;
+            const ws = new WebSocket(SOCKET_URL);
+            socket.current = ws;
+
+            ws.onopen = () => {
+                if (!mounted.current) return;
+                attempt.current = 0;
+                setConnected(true);
+            };
+
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event?.data);
+                if (data?.access !== undefined && data?.message) {
+                    welcomeAlert({ access: data?.access, message: data?.message });
+                }
+            };
+
+            ws.onclose = () => {
+                if (!mounted.current) return;
+                setConnected(false);
+                const delay = Math.min(RECONNECT_BASE_MS * 2 ** attempt.current, RECONNECT_MAX_MS);
+                attempt.current += 1;
+                reconnectTimer.current = setTimeout(connect, delay);
+            };
+
+            ws.onerror = () => ws.close();
+        };
+
+        connect();
+
+        const timer = setInterval(() => progressRef.current(), 500);
 
         return () => {
-          if (socket.current.readyState === WebSocket.OPEN) {
-              socket.current.close();
-          }
-          socket.current.close();
-          clearInterval(timer);
-        }
+            mounted.current = false;
+            clearTimeout(reconnectTimer.current);
+            clearInterval(timer);
+            socket.current?.close();
+        };
     }, []);
-
-    // //connect to socket server
-    // useEffect(() => {
-    //     socket.onopen = () => {
-    //
-    //     }
-    //     socket.on('access', (data) => {
-    //         welcomeAlert({access: data?.access, message: data?.message});
-    //     });
-    //
-    //     return () => {
-    //         socket.off('access');
-    //     }
-    // }, []);
 
 
     return (
@@ -105,18 +120,27 @@ const Page = () => {
                     <Typography
                         color="textPrimary"
                         variant="h3"
-                        sx={{
-                            textAlign: 'center',
-                            mb: 3
-                        }}
+                        sx={{ textAlign: 'center', mb: 3 }}
                     >
                         Para acceder por favor acerca tu tarjeta al lector
                     </Typography>
-                    <Box sx={{width: '100%'}}>
-                        <LinearProgress variant="buffer"
-                                        value={progress}
-                                        valueBuffer={buffer}/>
+                    <Box sx={{ width: '100%' }}>
+                        <LinearProgress
+                            variant={connected ? 'buffer' : 'indeterminate'}
+                            value={connected ? progress : undefined}
+                            valueBuffer={connected ? buffer : undefined}
+                            color={connected ? 'primary' : 'warning'}
+                        />
                     </Box>
+                    {!connected && (
+                        <Typography
+                            variant="caption"
+                            color="warning.main"
+                            sx={{ display: 'block', textAlign: 'center', mt: 1 }}
+                        >
+                            Reconectando…
+                        </Typography>
+                    )}
 
                 </Box>
             </Box>

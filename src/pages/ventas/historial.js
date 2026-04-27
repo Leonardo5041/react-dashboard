@@ -16,6 +16,7 @@ import {
   Stack,
   SvgIcon,
   Table,
+  Tooltip,
   TableBody,
   TableCell,
   TableHead,
@@ -113,8 +114,10 @@ const Page = () => {
     refetch();
   };
 
-  const itemsLabel = (venta) =>
-    (venta.items || []).map((i) => i.cantidad > 1 ? `${i.producto} ×${i.cantidad}` : i.producto).join(', ');
+  const itemsLabel = (venta) => {
+    if (venta.descripcion) return venta.descripcion;
+    return (venta.items || []).map((i) => i.cantidad > 1 ? `${i.producto} ×${i.cantidad}` : i.producto).join(', ');
+  };
 
   const handleAnular = async (venta) => {
     const result = await confirmAlert(`¿Anular la venta #${venta.id} (${itemsLabel(venta)})?`);
@@ -201,12 +204,14 @@ const Page = () => {
                   <Divider sx={{ my: 1.5 }} />
                   <Stack direction="row" justifyContent="space-between" alignItems="center">
                     {totalGastos > 0 ? (
-                      <Stack direction="row" alignItems="center" spacing={1}>
-                        <Typography variant="overline" color="error.main">Gastos internos</Typography>
-                        <Typography variant="subtitle1" color="error.main" fontWeight={600}>
-                          -${Number(totalGastos).toFixed(2)} MXN
-                        </Typography>
-                      </Stack>
+                      <Tooltip title="Gastos de inventario y gastos libres. No están incluidos en el total de ingresos.">
+                        <Stack direction="row" alignItems="center" spacing={1} sx={{ cursor: 'default' }}>
+                          <Typography variant="overline" color="error.main">Gastos internos</Typography>
+                          <Typography variant="subtitle1" color="error.main" fontWeight={600}>
+                            -${Number(totalGastos).toFixed(2)} MXN
+                          </Typography>
+                        </Stack>
+                      </Tooltip>
                     ) : <Box />}
                     <Stack direction="row" alignItems="center" spacing={1}>
                       <Typography variant="overline" color="text.secondary">Total ingresos</Typography>

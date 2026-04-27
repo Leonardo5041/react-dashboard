@@ -3,11 +3,18 @@ import { useState } from 'react';
 import { PinGuard } from 'src/components/pin-guard';
 import {
   Box,
+  Button,
   Card,
   CardContent,
   Chip,
   Container,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Divider,
   IconButton,
+  InputAdornment,
   LinearProgress,
   Stack,
   Table,
@@ -15,6 +22,7 @@ import {
   TableCell,
   TableHead,
   TableRow,
+  TextField,
   Tooltip,
   Typography,
   Unstable_Grid2 as Grid
@@ -30,8 +38,14 @@ const VisibilityOffIcon = () => (
     <path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46A11.804 11.804 0 0 0 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78 3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z"/>
   </svg>
 );
+
+const PencilIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+  </svg>
+);
 import { Layout as DashboardLayout } from 'src/layouts/dashboard/layout';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { PRODUCTS_URL, formatTime } from 'src/utils/get-initials';
 
@@ -48,17 +62,37 @@ const fetchCorte = async () => {
   return data;
 };
 
-const SummaryCard = ({ label, value }) => (
-  <Card>
-    <CardContent>
-      <Typography variant="overline" color="text.secondary">{label}</Typography>
-      <Typography variant="h5">${value?.toFixed(2) ?? '0.00'} MXN</Typography>
-    </CardContent>
-  </Card>
+const fmt = (v) => `$${Number(v).toFixed(2)} MXN`;
+
+const DesgloseFila = ({ label, value, show, bold, highlight, color, action }) => (
+  <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ py: 0.75, px: 1 }}>
+    <Stack direction="row" alignItems="center" spacing={0.5}>
+      <Typography
+        variant={bold ? 'subtitle1' : 'body2'}
+        fontWeight={bold ? 700 : 400}
+        color={highlight ? 'primary.main' : color || 'text.secondary'}
+      >
+        {label}
+      </Typography>
+      {action}
+    </Stack>
+    <Typography
+      variant={bold ? 'subtitle1' : 'body2'}
+      fontWeight={bold ? 700 : 400}
+      color={highlight ? 'primary.main' : color || 'text.primary'}
+    >
+      {show ? fmt(value) : '••••••'}
+    </Typography>
+  </Stack>
 );
 
 const Page = () => {
+  const queryClient = useQueryClient();
   const [showTotals, setShowTotals] = useState(true);
+  const [fondoDialog, setFondoDialog] = useState(false);
+  const [fondoInput, setFondoInput] = useState('');
+  const [savingFondo, setSavingFondo] = useState(false);
+
   const { isLoading, isError, data: corte } = useQuery(
     ['corte-caja'],
     fetchCorte,
@@ -66,6 +100,34 @@ const Page = () => {
   );
 
   const ventas = corte?.ventas || [];
+  const fondoInicial = corte?.fondoInicial ?? 0;
+  const totalGastos = corte?.totalGastos ?? 0;
+  const totalEfectivo = corte?.totalEfectivo ?? 0;
+  const totalTarjeta = corte?.totalTarjeta ?? 0;
+  const totalTransferencia = corte?.totalTransferencia ?? 0;
+  const total = corte?.total ?? 0;
+  // ventas en efectivo puras: lo que el backend ya calculó descontando fondo y gastos al revés
+  const ventasEfectivo = totalEfectivo - fondoInicial + totalGastos;
+
+  const openFondoDialog = () => {
+    setFondoInput(corte?.fondoInicial ? String(corte.fondoInicial) : '');
+    setFondoDialog(true);
+  };
+
+  const handleGuardarFondo = async () => {
+    const monto = parseFloat(fondoInput);
+    if (!monto || monto < 0) return;
+    setSavingFondo(true);
+    try {
+      await axios.post(`${PRODUCTS_URL}corte/fondo`, { monto });
+      queryClient.invalidateQueries(['corte-caja']);
+      setFondoDialog(false);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSavingFondo(false);
+    }
+  };
 
   return (
     <PinGuard>
@@ -94,60 +156,51 @@ const Page = () => {
             {isLoading && <LinearProgress color="secondary" />}
             {isError && <Typography color="error">Error al cargar el corte de caja</Typography>}
 
-            <Grid container spacing={3}>
-              <Grid xs={12} sm={6} md={3}>
-                <Card>
-                  <CardContent>
-                    <Typography variant="overline" color="text.secondary">Efectivo</Typography>
-                    <Typography variant="h5">
-                      {showTotals ? `$${corte?.totalEfectivo?.toFixed(2) ?? '0.00'} MXN` : '••••••'}
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
-              <Grid xs={12} sm={6} md={3}>
-                <Card>
-                  <CardContent>
-                    <Typography variant="overline" color="text.secondary">Tarjeta</Typography>
-                    <Typography variant="h5">
-                      {showTotals ? `$${corte?.totalTarjeta?.toFixed(2) ?? '0.00'} MXN` : '••••••'}
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
-              <Grid xs={12} sm={6} md={3}>
-                <Card>
-                  <CardContent>
-                    <Typography variant="overline" color="text.secondary">Transferencia</Typography>
-                    <Typography variant="h5">
-                      {showTotals ? `$${corte?.totalTransferencia?.toFixed(2) ?? '0.00'} MXN` : '••••••'}
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
-              <Grid xs={12} sm={6} md={3}>
-                <Card sx={{ bgcolor: 'primary.main', color: 'primary.contrastText' }}>
-                  <CardContent>
-                    <Typography variant="overline" sx={{ opacity: 0.8 }}>Total del día</Typography>
-                    <Typography variant="h5">
-                      {showTotals ? `$${corte?.total?.toFixed(2) ?? '0.00'} MXN` : '••••••'}
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
-              {(corte?.totalGastos ?? 0) > 0 && (
-                <Grid xs={12} sm={6} md={3}>
-                  <Card sx={{ bgcolor: 'error.main', color: 'error.contrastText' }}>
-                    <CardContent>
-                      <Typography variant="overline" sx={{ opacity: 0.8 }}>Gastos internos</Typography>
-                      <Typography variant="h5">
-                        {showTotals ? `$${corte?.totalGastos?.toFixed(2) ?? '0.00'} MXN` : '••••••'}
-                      </Typography>
-                    </CardContent>
-                  </Card>
+            <Card>
+              <CardContent>
+                <Grid container spacing={0}>
+                  {/* Columna efectivo */}
+                  <Grid xs={12} md={6}>
+                    <Stack spacing={0}>
+                      <DesgloseFila
+                        label="Fondo inicial"
+                        value={fondoInicial}
+                        show={showTotals}
+                        action={
+                          <Tooltip title={fondoInicial ? 'Editar fondo' : 'Registrar fondo'}>
+                            <IconButton size="small" onClick={openFondoDialog} disabled={isLoading}>
+                              <PencilIcon />
+                            </IconButton>
+                          </Tooltip>
+                        }
+                      />
+                      <DesgloseFila label="Ventas efectivo" value={ventasEfectivo} show={showTotals} />
+                      {totalGastos > 0 && (
+                        <DesgloseFila label="Gastos internos" value={-totalGastos} show={showTotals} color="error.main" />
+                      )}
+                      <Divider sx={{ my: 1 }} />
+                      <DesgloseFila label="Total efectivo" value={totalEfectivo} show={showTotals} bold />
+                    </Stack>
+                  </Grid>
+
+                  {/* Separador vertical en md+ */}
+                  <Grid xs={12} md="auto" sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'stretch', px: 2 }}>
+                    <Divider orientation="vertical" flexItem />
+                  </Grid>
+                  <Divider sx={{ display: { xs: 'block', md: 'none' }, my: 2 }} />
+
+                  {/* Columna totales */}
+                  <Grid xs={12} md>
+                    <Stack spacing={0}>
+                      <DesgloseFila label="Tarjeta" value={totalTarjeta} show={showTotals} />
+                      <DesgloseFila label="Transferencia" value={totalTransferencia} show={showTotals} />
+                      <Divider sx={{ my: 1 }} />
+                      <DesgloseFila label="Total del día" value={total} show={showTotals} bold highlight />
+                    </Stack>
+                  </Grid>
                 </Grid>
-              )}
-            </Grid>
+              </CardContent>
+            </Card>
 
             <Typography variant="h6">Ventas del día</Typography>
 
@@ -176,9 +229,11 @@ const Page = () => {
                     <TableRow key={venta.id} hover>
                       <TableCell>{venta.id}</TableCell>
                       <TableCell>
-                        {(venta.items || []).map((i) =>
-                          i.cantidad > 1 ? `${i.producto} ×${i.cantidad}` : i.producto
-                        ).join(', ')}
+                        {venta.descripcion
+                          ? venta.descripcion
+                          : (venta.items || []).map((i) =>
+                              i.cantidad > 1 ? `${i.producto} ×${i.cantidad}` : i.producto
+                            ).join(', ')}
                       </TableCell>
                       <TableCell>
                         {showTotals ? `$${Number(venta.total).toFixed(2)} MXN` : '••••••'}
@@ -199,6 +254,33 @@ const Page = () => {
           </Stack>
         </Container>
       </Box>
+      <Dialog open={fondoDialog} onClose={() => setFondoDialog(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Fondo inicial de caja</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            fullWidth
+            label="Monto"
+            type="number"
+            value={fondoInput}
+            onChange={(e) => setFondoInput(e.target.value)}
+            InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }}
+            inputProps={{ min: 0, step: '0.01' }}
+            sx={{ mt: 1 }}
+            onKeyDown={(e) => e.key === 'Enter' && handleGuardarFondo()}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setFondoDialog(false)} disabled={savingFondo}>Cancelar</Button>
+          <Button
+            variant="contained"
+            onClick={handleGuardarFondo}
+            disabled={savingFondo || !parseFloat(fondoInput) || parseFloat(fondoInput) < 0}
+          >
+            Guardar
+          </Button>
+        </DialogActions>
+      </Dialog>
     </PinGuard>
   );
 };

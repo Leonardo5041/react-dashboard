@@ -11,6 +11,7 @@ import {
   Divider,
   FormControl,
   IconButton,
+  InputAdornment,
   InputLabel,
   LinearProgress,
   MenuItem,
@@ -19,6 +20,9 @@ import {
   Alert,
   Stack,
   SvgIcon,
+  TextField,
+  ToggleButton,
+  ToggleButtonGroup,
   Typography,
   Unstable_Grid2 as Grid
 } from '@mui/material';
@@ -52,8 +56,16 @@ const Page = () => {
 
   const [cart, setCart] = useState([]);
   const [metodo, setMetodo] = useState('Efectivo');
+  const [gastoLibre, setGastoLibre] = useState(false);
+  const [gastoDesc, setGastoDesc] = useState('');
+  const [gastoMonto, setGastoMonto] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [scanNotFound, setScanNotFound] = useState(false);
+
+  const handleMetodoChange = (nuevoMetodo) => {
+    setMetodo(nuevoMetodo);
+    if (nuevoMetodo !== 'Gasto') setGastoLibre(false);
+  };
 
   const scanBuffer = useRef('');
   const scanLastTime = useRef(0);
@@ -117,31 +129,40 @@ const Page = () => {
   }, [products]);
 
   const handleVenta = async () => {
-    if (cart.length === 0) return;
     setSubmitting(true);
     try {
-      const { status, data } = await axios.post(`${PRODUCTS_URL}ventas`, {
-        metodo,
-        items: cart.map((i) => ({ sku: i.product.sku, cantidad: i.cantidad }))
-      });
+      let payload;
+      if (metodo === 'Gasto' && gastoLibre) {
+        payload = { metodo: 'Gasto', descripcion: gastoDesc.trim(), monto: parseFloat(gastoMonto) };
+      } else {
+        if (cart.length === 0) return;
+        payload = { metodo, items: cart.map((i) => ({ sku: i.product.sku, cantidad: i.cantidad })) };
+      }
+
+      const { status, data } = await axios.post(`${PRODUCTS_URL}ventas`, payload);
       if (status === 201) {
         setCart([]);
+        setGastoDesc('');
+        setGastoMonto('');
         queryClient.invalidateQueries(['products-pos']);
         Swal.fire({
           icon: 'success',
-          title: 'Venta registrada',
-          text: `Total: $${data?.venta?.total} MXN (${metodo})`,
+          title: metodo === 'Gasto' ? 'Gasto registrado' : 'Venta registrada',
+          text: `Total: $${data?.venta?.total} MXN`,
           timer: 2000,
           showConfirmButton: false
         });
       }
     } catch (err) {
-      const msg = err?.response?.data?.error || 'Error al registrar la venta';
+      const msg = err?.response?.data?.error || 'Error al registrar';
       Swal.fire({ icon: 'error', title: 'Error', text: msg });
     } finally {
       setSubmitting(false);
     }
   };
+
+  const gastoLibreValido = gastoDesc.trim().length > 0 && parseFloat(gastoMonto) > 0;
+  const submitDisabled = submitting || (metodo === 'Gasto' && gastoLibre ? !gastoLibreValido : cart.length === 0);
 
   return (
     <>
@@ -166,7 +187,7 @@ const Page = () => {
             {isError && <Typography color="error">Error al cargar los productos</Typography>}
 
             <Grid container spacing={3}>
-              <Grid xs={12} md={8}>
+              <Grid xs={12} md={8} sx={{ display: metodo === 'Gasto' && gastoLibre ? 'none' : undefined }}>
                 <Grid container spacing={2}>
                   {products.map((product) => {
                     const sinStock = product.stock <= 0;
@@ -266,24 +287,64 @@ const Page = () => {
 
                       <FormControl fullWidth size="small">
                         <InputLabel>Método de pago</InputLabel>
-                        <Select value={metodo} label="Método de pago" onChange={(e) => setMetodo(e.target.value)}>
+                        <Select value={metodo} label="Método de pago" onChange={(e) => handleMetodoChange(e.target.value)}>
                           {METODOS.map((m) => <MenuItem key={m} value={m}>{m}</MenuItem>)}
                         </Select>
                       </FormControl>
+
+                      {metodo === 'Gasto' && (
+                        <ToggleButtonGroup
+                          value={gastoLibre ? 'libre' : 'inventario'}
+                          exclusive
+                          size="small"
+                          fullWidth
+                          onChange={(_, val) => { if (val !== null) setGastoLibre(val === 'libre'); }}
+                        >
+                          <ToggleButton value="inventario">Gasto de inventario</ToggleButton>
+                          <ToggleButton value="libre">Gasto libre</ToggleButton>
+                        </ToggleButtonGroup>
+                      )}
+
+                      {metodo === 'Gasto' && gastoLibre && (
+                        <Stack spacing={1.5}>
+                          <TextField
+                            fullWidth
+                            size="small"
+                            label="Descripcion"
+                            value={gastoDesc}
+                            onChange={(e) => setGastoDesc(e.target.value)}
+                            placeholder="Ej: Limpieza, Mantenimiento…"
+                          />
+                          <TextField
+                            fullWidth
+                            size="small"
+                            label="Monto"
+                            type="number"
+                            value={gastoMonto}
+                            onChange={(e) => setGastoMonto(e.target.value)}
+                            InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }}
+                            inputProps={{ min: 0, step: '0.01' }}
+                          />
+                        </Stack>
+                      )}
 
                       <Button
                         fullWidth
                         variant="contained"
                         size="large"
                         color={metodo === 'Gasto' ? 'error' : 'primary'}
-                        disabled={cart.length === 0 || submitting}
+                        disabled={submitDisabled}
                         onClick={handleVenta}
                         startIcon={submitting ? <CircularProgress size={16} /> : null}
                       >
-                        {metodo === 'Gasto' ? `Registrar Gasto $${cartTotal.toFixed(2)}` : `Cobrar $${cartTotal.toFixed(2)}`}
+                        {metodo === 'Gasto' && gastoLibre
+                          ? `Registrar Gasto $${parseFloat(gastoMonto || 0).toFixed(2)}`
+                          : metodo === 'Gasto'
+                          ? `Registrar Gasto $${cartTotal.toFixed(2)}`
+                          : `Cobrar $${cartTotal.toFixed(2)}`}
                       </Button>
 
-                      {cart.length > 0 && (
+                      {!gastoLibre && cart.length > 0 && (
                         <Button
                           fullWidth
                           variant="text"
