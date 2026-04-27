@@ -4,9 +4,13 @@ import { PinGuard } from 'src/components/pin-guard';
 import {
   Box,
   Button,
+  ButtonGroup,
   Card,
+  CardContent,
   Chip,
   Container,
+  Divider,
+  Grid,
   IconButton,
   LinearProgress,
   Stack,
@@ -34,7 +38,36 @@ const METODO_COLOR = {
   Transferencia: 'warning'
 };
 
-const todayMX = () => moment.tz('America/Mexico_City').toDate();
+const nowMX = () => moment.tz('America/Mexico_City');
+const todayMX = () => nowMX().toDate();
+
+const QUICK_FILTERS = [
+  {
+    label: 'Hoy',
+    range: () => { const d = nowMX(); return [d.toDate(), d.toDate()]; }
+  },
+  {
+    label: 'Esta semana',
+    range: () => {
+      const d = nowMX();
+      return [d.clone().startOf('isoWeek').toDate(), d.clone().endOf('isoWeek').toDate()];
+    }
+  },
+  {
+    label: 'Semana anterior',
+    range: () => {
+      const d = nowMX().subtract(1, 'week');
+      return [d.clone().startOf('isoWeek').toDate(), d.clone().endOf('isoWeek').toDate()];
+    }
+  },
+  {
+    label: 'Este mes',
+    range: () => {
+      const d = nowMX();
+      return [d.clone().startOf('month').toDate(), d.clone().endOf('month').toDate()];
+    }
+  }
+];
 
 const fetchHistorial = async (desde, hasta) => {
   const { data, status } = await axios.get(
@@ -48,6 +81,14 @@ const Page = () => {
   const queryClient = useQueryClient();
   const [fechaDesde, setFechaDesde] = useState(todayMX());
   const [fechaHasta, setFechaHasta] = useState(todayMX());
+  const [activeFilter, setActiveFilter] = useState('Hoy');
+
+  const applyQuickFilter = (filter) => {
+    const [desde, hasta] = filter.range();
+    setFechaDesde(desde);
+    setFechaHasta(hasta);
+    setActiveFilter(filter.label);
+  };
 
   const desde = moment(fechaDesde).format('YYYY-MM-DD');
   const hasta = moment(fechaHasta).format('YYYY-MM-DD');
@@ -59,8 +100,16 @@ const Page = () => {
   );
 
   const ventas = data.ventas || [];
+  const numVentas = data.numVentas ?? ventas.length;
+  const totalEfectivo = data.totalEfectivo ?? 0;
+  const totalTarjeta = data.totalTarjeta ?? 0;
+  const totalTransferencia = data.totalTransferencia ?? 0;
+  const total = data.total ?? 0;
 
-  const handleBuscar = () => refetch();
+  const handleBuscar = () => {
+    setActiveFilter(null);
+    refetch();
+  };
 
   const itemsLabel = (venta) =>
     (venta.items || []).map((i) => i.cantidad > 1 ? `${i.producto} ×${i.cantidad}` : i.producto).join(', ');
@@ -89,6 +138,18 @@ const Page = () => {
           <Stack spacing={3}>
             <Typography variant="h4">Historial de Ventas</Typography>
 
+            <ButtonGroup variant="outlined" size="small">
+              {QUICK_FILTERS.map((f) => (
+                <Button
+                  key={f.label}
+                  variant={activeFilter === f.label ? 'contained' : 'outlined'}
+                  onClick={() => applyQuickFilter(f)}
+                >
+                  {f.label}
+                </Button>
+              ))}
+            </ButtonGroup>
+
             <Stack direction="row" spacing={2} alignItems="center">
               <DatePicker
                 disableMaskedInput={true}
@@ -113,6 +174,38 @@ const Page = () => {
 
             {isLoading && <LinearProgress color="secondary" />}
             {isError && <Typography color="error">Error al cargar el historial</Typography>}
+
+            {!isLoading && !isError && (
+              <Card>
+                <CardContent>
+                  <Grid container spacing={2} alignItems="center">
+                    <Grid item xs={6} sm={3}>
+                      <Typography variant="overline" color="text.secondary">Ventas</Typography>
+                      <Typography variant="h6">{numVentas}</Typography>
+                    </Grid>
+                    <Grid item xs={6} sm={3}>
+                      <Typography variant="overline" color="text.secondary">Efectivo</Typography>
+                      <Typography variant="h6" color="success.main">${Number(totalEfectivo).toFixed(2)}</Typography>
+                    </Grid>
+                    <Grid item xs={6} sm={3}>
+                      <Typography variant="overline" color="text.secondary">Tarjeta</Typography>
+                      <Typography variant="h6" color="info.main">${Number(totalTarjeta).toFixed(2)}</Typography>
+                    </Grid>
+                    <Grid item xs={6} sm={3}>
+                      <Typography variant="overline" color="text.secondary">Transferencia</Typography>
+                      <Typography variant="h6" color="warning.main">${Number(totalTransferencia).toFixed(2)}</Typography>
+                    </Grid>
+                  </Grid>
+                  <Divider sx={{ my: 1.5 }} />
+                  <Stack direction="row" justifyContent="flex-end">
+                    <Typography variant="overline" color="text.secondary" sx={{ mr: 1, alignSelf: 'center' }}>
+                      Total general
+                    </Typography>
+                    <Typography variant="h5">${Number(total).toFixed(2)} MXN</Typography>
+                  </Stack>
+                </CardContent>
+              </Card>
+            )}
 
             <Card>
               <Table>

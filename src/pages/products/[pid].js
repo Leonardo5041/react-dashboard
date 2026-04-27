@@ -30,23 +30,17 @@ const Page = () => {
     });
 
     const updateProduct = async (data) => {
-        const { sku, nombre, precio, stock, minimo } = data;
+        const { sku, nombre, precio, minimo } = data;
         const productRequest = {
             sku: sku.trim(),
             nombre: nombre.trim(),
             precio: parseFloat(precio),
             minimo: parseInt(minimo)
         };
-        const stockRequest = { stock: parseInt(stock) };
         try {
-            const [productRes, stockRes] = await Promise.all([
-                axios.put(`${PRODUCTS_URL}productos/${pid}`, productRequest),
-                axios.put(`${PRODUCTS_URL}inventario/${pid}`, stockRequest)
-            ]);
-            if (productRes.status === 200 && stockRes.status === 200) {
+            const { status } = await axios.put(`${PRODUCTS_URL}productos/${pid}`, productRequest);
+            if (status === 200) {
                 await router.push('/products');
-            } else {
-                console.error(productRes.data, stockRes.data);
             }
         } catch (err) {
             console.error(err);
@@ -90,11 +84,6 @@ const Page = () => {
                 .min(1, 'Precio debe ser mayor a 0')
                 .max(1000000)
                 .required('Precio es requerido'),
-            stock: Yup
-                .number()
-                .min(1, 'Cantidad debe ser mayor a 0')
-                .max(10000)
-                .required('La cantidad es requerida'),
             minimo: Yup
                 .number()
                 .min(1, 'Stock mínimo debe ser mayor a 0')
@@ -207,15 +196,12 @@ const Page = () => {
                                     value={formik.values.precio}
                                 />
                                 <TextField
-                                    error={!!(formik.touched.stock && formik.errors.stock)}
                                     fullWidth
-                                    helperText={formik.touched.stock && formik.errors.stock}
                                     label="Stock del producto"
-                                    name="stock"
-                                    onBlur={formik.handleBlur}
-                                    onChange={formik.handleChange}
                                     type="number"
                                     value={formik.values.stock}
+                                    disabled
+                                    helperText="El stock solo puede modificarse desde Inventario"
                                 />
                                 <TextField
                                     error={!!(formik.touched.minimo && formik.errors.minimo)}
