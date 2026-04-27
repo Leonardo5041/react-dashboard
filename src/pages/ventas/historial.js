@@ -35,7 +35,8 @@ import * as moment from 'moment-timezone';
 const METODO_COLOR = {
   Efectivo: 'success',
   Tarjeta: 'info',
-  Transferencia: 'warning'
+  Transferencia: 'warning',
+  Gasto: 'error'
 };
 
 const nowMX = () => moment.tz('America/Mexico_City');
@@ -105,6 +106,7 @@ const Page = () => {
   const totalTarjeta = data.totalTarjeta ?? 0;
   const totalTransferencia = data.totalTransferencia ?? 0;
   const total = data.total ?? 0;
+  const totalGastos = data.totalGastos ?? 0;
 
   const handleBuscar = () => {
     setActiveFilter(null);
@@ -197,11 +199,19 @@ const Page = () => {
                     </Grid>
                   </Grid>
                   <Divider sx={{ my: 1.5 }} />
-                  <Stack direction="row" justifyContent="flex-end">
-                    <Typography variant="overline" color="text.secondary" sx={{ mr: 1, alignSelf: 'center' }}>
-                      Total general
-                    </Typography>
-                    <Typography variant="h5">${Number(total).toFixed(2)} MXN</Typography>
+                  <Stack direction="row" justifyContent="space-between" alignItems="center">
+                    {totalGastos > 0 ? (
+                      <Stack direction="row" alignItems="center" spacing={1}>
+                        <Typography variant="overline" color="error.main">Gastos internos</Typography>
+                        <Typography variant="subtitle1" color="error.main" fontWeight={600}>
+                          -${Number(totalGastos).toFixed(2)} MXN
+                        </Typography>
+                      </Stack>
+                    ) : <Box />}
+                    <Stack direction="row" alignItems="center" spacing={1}>
+                      <Typography variant="overline" color="text.secondary">Total ingresos</Typography>
+                      <Typography variant="h5">${Number(total).toFixed(2)} MXN</Typography>
+                    </Stack>
                   </Stack>
                 </CardContent>
               </Card>

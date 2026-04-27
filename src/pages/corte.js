@@ -38,7 +38,8 @@ import { PRODUCTS_URL, formatTime } from 'src/utils/get-initials';
 const METODO_COLOR = {
   Efectivo: 'success',
   Tarjeta: 'info',
-  Transferencia: 'warning'
+  Transferencia: 'warning',
+  Gasto: 'error'
 };
 
 const fetchCorte = async () => {
@@ -134,6 +135,18 @@ const Page = () => {
                   </CardContent>
                 </Card>
               </Grid>
+              {(corte?.totalGastos ?? 0) > 0 && (
+                <Grid xs={12} sm={6} md={3}>
+                  <Card sx={{ bgcolor: 'error.main', color: 'error.contrastText' }}>
+                    <CardContent>
+                      <Typography variant="overline" sx={{ opacity: 0.8 }}>Gastos internos</Typography>
+                      <Typography variant="h5">
+                        {showTotals ? `$${corte?.totalGastos?.toFixed(2) ?? '0.00'} MXN` : '••••••'}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              )}
             </Grid>
 
             <Typography variant="h6">Ventas del día</Typography>

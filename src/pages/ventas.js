@@ -34,7 +34,7 @@ import axios from 'axios';
 import { PRODUCTS_URL } from 'src/utils/get-initials';
 import Swal from 'sweetalert2';
 
-const METODOS = ['Efectivo', 'Tarjeta', 'Transferencia'];
+const METODOS = ['Efectivo', 'Tarjeta', 'Transferencia', 'Gasto'];
 
 const fetchProducts = async () => {
   const { data, status } = await axios.get(`${PRODUCTS_URL}productos`);
@@ -275,11 +275,12 @@ const Page = () => {
                         fullWidth
                         variant="contained"
                         size="large"
+                        color={metodo === 'Gasto' ? 'error' : 'primary'}
                         disabled={cart.length === 0 || submitting}
                         onClick={handleVenta}
                         startIcon={submitting ? <CircularProgress size={16} /> : null}
                       >
-                        Cobrar ${cartTotal.toFixed(2)}
+                        {metodo === 'Gasto' ? `Registrar Gasto $${cartTotal.toFixed(2)}` : `Cobrar $${cartTotal.toFixed(2)}`}
                       </Button>
 
                       {cart.length > 0 && (

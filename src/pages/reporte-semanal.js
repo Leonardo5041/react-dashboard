@@ -30,7 +30,7 @@ import { useMemo, useState, useEffect } from 'react';
 
 const Chart = dynamic(() => import('react-apexcharts'), { ssr: false });
 
-const METODO_COLOR = { Efectivo: 'success', Tarjeta: 'info', Transferencia: 'warning' };
+const METODO_COLOR = { Efectivo: 'success', Tarjeta: 'info', Transferencia: 'warning', Gasto: 'error' };
 
 const fetchReporteSemanal = async () => {
   const { data, status } = await axios.get(`${PRODUCTS_URL}corte/semanal`);
@@ -95,6 +95,15 @@ const DiaRow = ({ dia }) => {
             ${dia.total?.toFixed(2)}
           </Typography>
         </TableCell>
+        <TableCell align="right">
+          {(dia.totalGastos ?? 0) > 0 ? (
+            <Typography variant="body2" color="error.main" fontWeight={600}>
+              -${Number(dia.totalGastos).toFixed(2)}
+            </Typography>
+          ) : (
+            <Typography variant="body2" color="text.disabled">—</Typography>
+          )}
+        </TableCell>
         <TableCell align="center">
           <Chip label={dia.numVentas} size="small" color={hasVentas ? 'primary' : 'default'} />
         </TableCell>
@@ -102,7 +111,7 @@ const DiaRow = ({ dia }) => {
 
       {hasVentas && (
         <TableRow>
-          <TableCell colSpan={7} sx={{ py: 0, bgcolor: 'action.hover' }}>
+          <TableCell colSpan={8} sx={{ py: 0, bgcolor: 'action.hover' }}>
             <Collapse in={open} timeout="auto" unmountOnExit>
               <Box sx={{ px: 4, py: 1 }}>
                 {loadingVentas && <LinearProgress color="secondary" />}
@@ -221,6 +230,16 @@ const Page = () => {
                   </CardContent>
                 </Card>
               </Grid>
+              {(reporte?.totalGastos ?? 0) > 0 && (
+                <Grid xs={12} sm={6} md={3}>
+                  <Card sx={{ bgcolor: 'error.main', color: 'error.contrastText' }}>
+                    <CardContent>
+                      <Typography variant="overline" sx={{ opacity: 0.8 }}>Gastos internos</Typography>
+                      <Typography variant="h5">${reporte?.totalGastos?.toFixed(2) ?? '0.00'} MXN</Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              )}
             </Grid>
 
             {dias.length > 0 && (
@@ -249,13 +268,14 @@ const Page = () => {
                     <TableCell align="right">Tarjeta</TableCell>
                     <TableCell align="right">Transferencia</TableCell>
                     <TableCell align="right">Total</TableCell>
+                    <TableCell align="right">Gastos</TableCell>
                     <TableCell align="center">Ventas</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {dias.length === 0 && !isLoading && (
                     <TableRow>
-                      <TableCell colSpan={7} align="center">
+                      <TableCell colSpan={8} align="center">
                         <Typography variant="body2" color="text.secondary">Sin datos para esta semana</Typography>
                       </TableCell>
                     </TableRow>
