@@ -66,7 +66,7 @@ const Page = () => {
           email: values.email,
           password: values.password
         });
-        if (status === 201) {
+        if (status === 200 || status === 201) {
           const { token, user } = data;
           await authContext.signIn(user);
           localStorage.setItem('token', token);

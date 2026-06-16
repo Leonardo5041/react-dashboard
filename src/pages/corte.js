@@ -1,7 +1,7 @@
 import Head from 'next/head';
 import { useState } from 'react';
-import { PinGuard } from 'src/components/pin-guard';
 import {
+  Alert,
   Box,
   Button,
   Card,
@@ -27,6 +27,7 @@ import {
   Typography,
   Unstable_Grid2 as Grid
 } from '@mui/material';
+
 const VisibilityIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
     <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
@@ -44,22 +45,18 @@ const PencilIcon = () => (
     <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
   </svg>
 );
+
 import { Layout as DashboardLayout } from 'src/layouts/dashboard/layout';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import axios from 'axios';
-import { PRODUCTS_URL, formatTime } from 'src/utils/get-initials';
+import api from 'src/utils/api';
+import { formatTime } from 'src/utils/get-initials';
+import { useAuthContext } from 'src/contexts/auth-context';
 
 const METODO_COLOR = {
   Efectivo: 'success',
   Tarjeta: 'info',
   Transferencia: 'warning',
   Gasto: 'error'
-};
-
-const fetchCorte = async () => {
-  const { data, status } = await axios.get(`${PRODUCTS_URL}corte/caja`);
-  if (status !== 200) return null;
-  return data;
 };
 
 const fmt = (v) => `$${Number(v).toFixed(2)} MXN`;
@@ -86,18 +83,51 @@ const DesgloseFila = ({ label, value, show, bold, highlight, color, action }) =>
   </Stack>
 );
 
+const ResumenFila = ({ label, value, bold, color }) => (
+  <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ py: 0.5 }}>
+    <Typography variant="body2" color="text.secondary">{label}</Typography>
+    <Typography variant={bold ? 'subtitle1' : 'body2'} fontWeight={bold ? 700 : 400} color={color || 'text.primary'}>
+      {fmt(value)}
+    </Typography>
+  </Stack>
+);
+
+const fetchCorte = async () => {
+  const { data, status } = await api.get('corte/caja');
+  if (status !== 200) return null;
+  return data;
+};
+
 const Page = () => {
   const queryClient = useQueryClient();
-  const [showTotals, setShowTotals] = useState(true);
+  const { user } = useAuthContext();
+  const isAdmin = user?.role === 'admin';
+
+  const [showTotals, setShowTotals] = useState(isAdmin);
   const [fondoDialog, setFondoDialog] = useState(false);
   const [fondoInput, setFondoInput] = useState('');
   const [savingFondo, setSavingFondo] = useState(false);
+
+  // Cerrar turno
+  const [cierreDialog, setCierreDialog] = useState(false);
+  const [efectivoInput, setEfectivoInput] = useState('');
+  const [savingCierre, setSavingCierre] = useState(false);
+  const [cierreResult, setCierreResult] = useState(null); // null = input, object = resultado
 
   const { isLoading, isError, data: corte } = useQuery(
     ['corte-caja'],
     fetchCorte,
     { refetchOnWindowFocus: false }
   );
+
+  const { data: turnoData, refetch: refetchCiego } = useQuery(
+    ['corte-turno'],
+    async () => { const { data } = await api.get('corte/turno'); return data; },
+    { refetchOnWindowFocus: false }
+  );
+
+  const yaDeclarado = turnoData?.turno_cerrado === true;
+  const declaracion = turnoData?.turno;
 
   const ventas = corte?.ventas || [];
   const fondoInicial = corte?.fondoInicial ?? 0;
@@ -106,7 +136,6 @@ const Page = () => {
   const totalTarjeta = corte?.totalTarjeta ?? 0;
   const totalTransferencia = corte?.totalTransferencia ?? 0;
   const total = corte?.total ?? 0;
-  // ventas en efectivo puras: lo que el backend ya calculó descontando fondo y gastos al revés
   const ventasEfectivo = totalEfectivo - fondoInicial + totalGastos;
 
   const openFondoDialog = () => {
@@ -119,7 +148,7 @@ const Page = () => {
     if (!monto || monto < 0) return;
     setSavingFondo(true);
     try {
-      await axios.post(`${PRODUCTS_URL}corte/fondo`, { monto });
+      await api.post('corte/fondo', { monto });
       queryClient.invalidateQueries(['corte-caja']);
       setFondoDialog(false);
     } catch (err) {
@@ -129,8 +158,34 @@ const Page = () => {
     }
   };
 
+  const handleAbrirCierre = () => {
+    setEfectivoInput('');
+    setCierreResult(null);
+    setCierreDialog(true);
+  };
+
+  const handleCerrarTurno = async () => {
+    const declarado = parseFloat(efectivoInput) || 0;
+    setSavingCierre(true);
+    try {
+      await api.post('corte/ciego', {
+        efectivo_declarado: declarado,
+        tarjeta_declarada: 0,
+        transferencia_declarada: 0,
+      });
+      await refetchCiego();
+      const diferencia = declarado - totalEfectivo;
+      setCierreResult({ declarado, esperado: totalEfectivo, fondoInicial, ventasEfectivo, totalGastos, diferencia });
+    } catch (err) {
+      const msg = err?.response?.data?.error || 'Error al cerrar turno';
+      alert(msg);
+    } finally {
+      setSavingCierre(false);
+    }
+  };
+
   return (
-    <PinGuard>
+    <>
       <Head>
         <title>Corte de Caja | Pitbulls Gym</title>
       </Head>
@@ -145,21 +200,44 @@ const Page = () => {
                     Fecha: {corte.fecha}
                   </Typography>
                 )}
-                <Tooltip title={showTotals ? 'Ocultar totales' : 'Mostrar totales'}>
-                  <IconButton onClick={() => setShowTotals((prev) => !prev)} size="small">
-                    {showTotals ? <VisibilityOffIcon /> : <VisibilityIcon />}
-                  </IconButton>
-                </Tooltip>
+                {isAdmin && (
+                  <Tooltip title={showTotals ? 'Ocultar totales' : 'Mostrar totales'}>
+                    <IconButton onClick={() => setShowTotals((prev) => !prev)} size="small">
+                      {showTotals ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                    </IconButton>
+                  </Tooltip>
+                )}
+                {!isAdmin && (
+                  yaDeclarado ? (
+                    <Button variant="outlined" color="success" disabled size="small">
+                      Turno cerrado
+                    </Button>
+                  ) : (
+                    <Button variant="contained" color="error" onClick={handleAbrirCierre} size="small">
+                      Cerrar turno
+                    </Button>
+                  )
+                )}
               </Stack>
             </Stack>
 
             {isLoading && <LinearProgress color="secondary" />}
             {isError && <Typography color="error">Error al cargar el corte de caja</Typography>}
 
+            {!isAdmin && turnoData?.turno_iniciado && !yaDeclarado && declaracion && (
+              <Alert severity="info">
+                Turno iniciado a las <strong>{declaracion.inicio_at}</strong> — fondo confirmado: <strong>{fmt(declaracion.fondo_confirmado)}</strong>
+              </Alert>
+            )}
+            {!isAdmin && yaDeclarado && declaracion && (
+              <Alert severity="success">
+                Turno cerrado — inicio: <strong>{declaracion.inicio_at}</strong> · cierre: <strong>{declaracion.fin_at}</strong> · efectivo declarado: <strong>{fmt(declaracion.efectivo_declarado)}</strong>
+              </Alert>
+            )}
+
             <Card>
               <CardContent>
                 <Grid container spacing={0}>
-                  {/* Columna efectivo */}
                   <Grid xs={12} md={6}>
                     <Stack spacing={0}>
                       <DesgloseFila
@@ -167,11 +245,13 @@ const Page = () => {
                         value={fondoInicial}
                         show={showTotals}
                         action={
-                          <Tooltip title={fondoInicial ? 'Editar fondo' : 'Registrar fondo'}>
-                            <IconButton size="small" onClick={openFondoDialog} disabled={isLoading}>
-                              <PencilIcon />
-                            </IconButton>
-                          </Tooltip>
+                          (isAdmin || fondoInicial === 0) && (
+                            <Tooltip title={fondoInicial ? 'Editar fondo' : 'Registrar fondo'}>
+                              <IconButton size="small" onClick={openFondoDialog} disabled={isLoading}>
+                                <PencilIcon />
+                              </IconButton>
+                            </Tooltip>
+                          )
                         }
                       />
                       <DesgloseFila label="Ventas efectivo" value={ventasEfectivo} show={showTotals} />
@@ -183,13 +263,11 @@ const Page = () => {
                     </Stack>
                   </Grid>
 
-                  {/* Separador vertical en md+ */}
                   <Grid xs={12} md="auto" sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'stretch', px: 2 }}>
                     <Divider orientation="vertical" flexItem />
                   </Grid>
                   <Divider sx={{ display: { xs: 'block', md: 'none' }, my: 2 }} />
 
-                  {/* Columna totales */}
                   <Grid xs={12} md>
                     <Stack spacing={0}>
                       <DesgloseFila label="Tarjeta" value={totalTarjeta} show={showTotals} />
@@ -239,11 +317,7 @@ const Page = () => {
                         {showTotals ? `$${Number(venta.total).toFixed(2)} MXN` : '••••••'}
                       </TableCell>
                       <TableCell>
-                        <Chip
-                          label={venta.metodo}
-                          color={METODO_COLOR[venta.metodo] || 'default'}
-                          size="small"
-                        />
+                        <Chip label={venta.metodo} color={METODO_COLOR[venta.metodo] || 'default'} size="small" />
                       </TableCell>
                       <TableCell>{formatTime(venta.fecha)}</TableCell>
                     </TableRow>
@@ -254,34 +328,89 @@ const Page = () => {
           </Stack>
         </Container>
       </Box>
+
+      {/* Dialog fondo inicial */}
       <Dialog open={fondoDialog} onClose={() => setFondoDialog(false)} maxWidth="xs" fullWidth>
         <DialogTitle>Fondo inicial de caja</DialogTitle>
         <DialogContent>
           <TextField
-            autoFocus
-            fullWidth
-            label="Monto"
-            type="number"
-            value={fondoInput}
-            onChange={(e) => setFondoInput(e.target.value)}
+            autoFocus fullWidth label="Monto" type="number"
+            value={fondoInput} onChange={(e) => setFondoInput(e.target.value)}
             InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }}
-            inputProps={{ min: 0, step: '0.01' }}
-            sx={{ mt: 1 }}
+            inputProps={{ min: 0, step: '0.01' }} sx={{ mt: 1 }}
             onKeyDown={(e) => e.key === 'Enter' && handleGuardarFondo()}
           />
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setFondoDialog(false)} disabled={savingFondo}>Cancelar</Button>
-          <Button
-            variant="contained"
-            onClick={handleGuardarFondo}
-            disabled={savingFondo || !parseFloat(fondoInput) || parseFloat(fondoInput) < 0}
-          >
+          <Button variant="contained" onClick={handleGuardarFondo}
+            disabled={savingFondo || !parseFloat(fondoInput) || parseFloat(fondoInput) < 0}>
             Guardar
           </Button>
         </DialogActions>
       </Dialog>
-    </PinGuard>
+
+      {/* Dialog cerrar turno */}
+      <Dialog open={cierreDialog} onClose={() => !savingCierre && setCierreDialog(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Cerrar turno</DialogTitle>
+        <DialogContent>
+          {!cierreResult ? (
+            <Stack spacing={2} sx={{ mt: 1 }}>
+              <Typography variant="body2" color="text.secondary">
+                Cuenta el efectivo físico en caja e ingresa el total.
+              </Typography>
+              <TextField
+                autoFocus fullWidth label="Efectivo contado" type="number"
+                value={efectivoInput} onChange={(e) => setEfectivoInput(e.target.value)}
+                InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }}
+                inputProps={{ min: 0, step: '0.01' }}
+                onKeyDown={(e) => e.key === 'Enter' && handleCerrarTurno()}
+              />
+            </Stack>
+          ) : (
+            <Stack spacing={1.5} sx={{ mt: 1 }}>
+              <ResumenFila label="Fondo inicial" value={cierreResult.fondoInicial} />
+              <ResumenFila label="Ventas efectivo" value={cierreResult.ventasEfectivo} />
+              {cierreResult.totalGastos > 0 && (
+                <ResumenFila label="Gastos internos" value={-cierreResult.totalGastos} color="error.main" />
+              )}
+              <Divider />
+              <ResumenFila label="Total esperado" value={cierreResult.esperado} bold />
+              <ResumenFila label="Tu declaración" value={cierreResult.declarado} bold />
+              <Divider />
+              <ResumenFila
+                label="Diferencia"
+                value={cierreResult.diferencia}
+                bold
+                color={cierreResult.diferencia > 0 ? 'success.main' : cierreResult.diferencia < 0 ? 'error.main' : 'text.primary'}
+              />
+              {cierreResult.diferencia === 0 && (
+                <Alert severity="success">¡Cuadra perfecto!</Alert>
+              )}
+              {cierreResult.diferencia > 0 && (
+                <Alert severity="warning">Sobrante — hay más efectivo del esperado.</Alert>
+              )}
+              {cierreResult.diferencia < 0 && (
+                <Alert severity="error">Faltante — hay menos efectivo del esperado.</Alert>
+              )}
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions>
+          {!cierreResult ? (
+            <>
+              <Button onClick={() => setCierreDialog(false)} disabled={savingCierre}>Cancelar</Button>
+              <Button variant="contained" color="error" onClick={handleCerrarTurno}
+                disabled={savingCierre || efectivoInput === ''}>
+                {savingCierre ? 'Cerrando...' : 'Cerrar turno'}
+              </Button>
+            </>
+          ) : (
+            <Button variant="contained" onClick={() => setCierreDialog(false)}>Listo</Button>
+          )}
+        </DialogActions>
+      </Dialog>
+    </>
   );
 };
 

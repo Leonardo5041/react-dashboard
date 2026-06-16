@@ -11,7 +11,7 @@ import {
     Unstable_Grid2 as Grid,
     Alert
 } from '@mui/material';
-import axios from 'axios';
+import api from 'src/utils/api';
 import {useRouter} from 'next/router';
 import {BACKEND_URL} from 'src/utils/get-initials';
 import {DatePicker} from '@mui/x-date-pickers';
@@ -31,7 +31,7 @@ export const CustomerMembership = ({user}) => {
 
     const getMemberships = async () => {
         try {
-            const {data} = await axios.get(`${BACKEND_URL}membership`);
+            const {data} = await api.get('memberships');
             if (data.length > 0) {
                 const memberships = [{id: '123', description: 'Seleccionar'}, ...data];
                 setMemberships(memberships);
@@ -61,7 +61,7 @@ export const CustomerMembership = ({user}) => {
                     membership_id: ''
                 }));
             }
-            const {data} = await axios.get(`${BACKEND_URL}subscription/${id}`);
+            const {data} = await api.get(`subscriptions/${id}`);
             if (data) {
                 setValues((prevState) => ({
                     ...prevState,
@@ -98,7 +98,7 @@ export const CustomerMembership = ({user}) => {
             end_date: endDate
         };
         if (!values.subscription) {
-            const createSubscription = await axios.post(`${BACKEND_URL}subscription`, request);
+            const createSubscription = await api.post('subscriptions', request);
             if (createSubscription.status === 201) {
                 setValues((prevState) => ({
                     ...prevState,
@@ -110,8 +110,7 @@ export const CustomerMembership = ({user}) => {
                 }));
             }
         } else {
-            const updateSubscription = await axios.patch(`${BACKEND_URL}subscription/${values.subscription}`,
-                request);
+            const updateSubscription = await api.patch(`subscriptions/${values.subscription}`, request);
             if (updateSubscription.status === 200) {
                 router.reload();
             }

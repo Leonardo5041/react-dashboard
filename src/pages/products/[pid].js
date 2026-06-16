@@ -3,7 +3,7 @@ import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import {Box, Button, LinearProgress, Stack, TextField, Typography} from '@mui/material';
 import { Layout as DashboardLayout } from 'src/layouts/dashboard/layout';
-import axios from 'axios';
+import api from 'src/utils/api';
 import { useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { PRODUCTS_URL, confirmAlert } from 'src/utils/get-initials';
@@ -11,7 +11,7 @@ import {useQuery} from "@tanstack/react-query";
 
 const fetchProduct = async (id) => {
     try {
-        const { data, status } = await axios.get(`${PRODUCTS_URL}productos/${id}`);
+        const { data, status } = await api.get(`productos/${id}`);
         if (status === 200) {
             return data;
         } else {
@@ -38,7 +38,7 @@ const Page = () => {
             minimo: parseInt(minimo)
         };
         try {
-            const { status } = await axios.put(`${PRODUCTS_URL}productos/${pid}`, productRequest);
+            const { status } = await api.put(`productos/${pid}`, productRequest);
             if (status === 200) {
                 await router.push('/products');
             }
@@ -51,7 +51,7 @@ const Page = () => {
       const confirmResponse = await confirmAlert('¿Estas seguro de eliminar este producto?');
         if (!confirmResponse.isConfirmed) return;
         try {
-            const { data, status } = await axios.delete(`${PRODUCTS_URL}productos/${pid}`);
+            const { data, status } = await api.delete(`productos/${pid}`);
             if (status === 200 || status === 204) {
                 await router.push('/products');
             } else {

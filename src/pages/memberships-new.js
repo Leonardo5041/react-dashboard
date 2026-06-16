@@ -4,7 +4,7 @@ import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import { Box, Button, Stack, TextField, Typography } from '@mui/material';
 import { Layout as DashboardLayout } from 'src/layouts/dashboard/layout';
-import axios from 'axios';
+import api from 'src/utils/api';
 import { BACKEND_URL } from 'src/utils/get-initials';
 
 const Page = () => {
@@ -21,7 +21,7 @@ const Page = () => {
         request.price = parseFloat(request.price);
         request.duration = parseInt(request.duration);
         try {
-            const { data, status } = await axios.post(`${BACKEND_URL}membership`, request);
+            const { data, status } = await api.post('memberships', request);
             if (status === 201) {
                 router.push('/companies');
             } else {

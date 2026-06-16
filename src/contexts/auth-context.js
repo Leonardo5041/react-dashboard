@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useReducer, useRef } from 'react';
 import PropTypes from 'prop-types';
 import axios from 'axios';
+import api from 'src/utils/api';
 import { useRouter } from 'next/router';
 import { BACKEND_URL, getInitials } from 'src/utils/get-initials';
 
@@ -83,16 +84,13 @@ export const AuthProvider = (props) => {
 
     if (isAuthenticated) {
       try {
-        const { data } = await axios.get(`${BACKEND_URL}users/user`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
+        const { data } = await api.get('users/user');
         const user = {
           id: data?.id,
           avatar: getInitials(data?.name) || '',
           name: data?.name,
-          email: data?.email
+          email: data?.email,
+          role: data?.role
         };
 
         dispatch({

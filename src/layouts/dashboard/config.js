@@ -16,6 +16,7 @@ export const items = [
   {
     title: 'Resumen',
     path: '/',
+    roles: ['admin'],
     icon: (
       <SvgIcon fontSize="small">
         <ChartBarIcon />
@@ -25,6 +26,7 @@ export const items = [
   {
     title: 'Clientes',
     path: '/customers',
+    roles: ['admin', 'cajero'],
     icon: (
       <SvgIcon fontSize="small">
         <UsersIcon />
@@ -34,6 +36,7 @@ export const items = [
   {
     title: 'Membresías',
     path: '/companies',
+    roles: ['admin'],
     icon: (
       <SvgIcon fontSize="small">
         <ShoppingBagIcon />
@@ -43,6 +46,7 @@ export const items = [
   {
     title: 'Productos',
     path: '/products',
+    roles: ['admin'],
     icon: (
       <SvgIcon fontSize="small">
         <ShoppingCartIcon />
@@ -52,6 +56,7 @@ export const items = [
   {
     title: 'Punto de Venta',
     path: '/ventas',
+    roles: ['admin', 'cajero'],
     icon: (
       <SvgIcon fontSize="small">
         <BanknotesIcon />
@@ -61,6 +66,7 @@ export const items = [
   {
     title: 'Historial de Ventas',
     path: '/ventas/historial',
+    roles: ['admin', 'cajero'],
     icon: (
       <SvgIcon fontSize="small">
         <ClipboardDocumentListIcon />
@@ -70,6 +76,7 @@ export const items = [
   {
     title: 'Inventario',
     path: '/inventario',
+    roles: ['admin'],
     icon: (
       <SvgIcon fontSize="small">
         <CubeIcon />
@@ -79,6 +86,17 @@ export const items = [
   {
     title: 'Corte de Caja',
     path: '/corte',
+    roles: ['admin', 'cajero'],
+    icon: (
+      <SvgIcon fontSize="small">
+        <ChartBarIcon />
+      </SvgIcon>
+    )
+  },
+  {
+    title: 'Corte Global',
+    path: '/corte-admin',
+    roles: ['admin'],
     icon: (
       <SvgIcon fontSize="small">
         <ChartBarIcon />
@@ -88,6 +106,7 @@ export const items = [
   {
     title: 'Reporte Semanal',
     path: '/reporte-semanal',
+    roles: ['admin'],
     icon: (
       <SvgIcon fontSize="small">
         <CalendarDaysIcon />
@@ -97,6 +116,7 @@ export const items = [
   {
     title: 'Mi cuenta',
     path: '/account',
+    roles: ['admin', 'cajero'],
     icon: (
       <SvgIcon fontSize="small">
         <UserIcon />
@@ -106,6 +126,7 @@ export const items = [
   {
     title: 'Configuraciones',
     path: '/settings',
+    roles: ['admin'],
     icon: (
       <SvgIcon fontSize="small">
         <CogIcon />
@@ -113,8 +134,9 @@ export const items = [
     )
   },
   {
-    title: 'Registrar administrador',
+    title: 'Registrar usuario',
     path: '/auth/register',
+    roles: ['admin'],
     icon: (
       <SvgIcon fontSize="small">
         <UserPlusIcon />
@@ -124,6 +146,7 @@ export const items = [
   {
     title: 'Acceso de clientes',
     path: '/access',
+    roles: ['admin', 'cajero'],
     icon: (
       <SvgIcon fontSize="small">
         <ArrowRightIcon />

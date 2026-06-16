@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import Head from 'next/head';
-import { PinGuard } from 'src/components/pin-guard';
 import {
   Box,
   Button,
@@ -27,8 +26,9 @@ import {
 import TrashIcon from '@heroicons/react/24/solid/TrashIcon';
 import { Layout as DashboardLayout } from 'src/layouts/dashboard/layout';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import axios from 'axios';
+import api from 'src/utils/api';
 import { PRODUCTS_URL, confirmAlert, formatDateTime } from 'src/utils/get-initials';
+import { useAuthContext } from 'src/contexts/auth-context';
 import Swal from 'sweetalert2';
 import { DatePicker } from '@mui/x-date-pickers';
 import * as moment from 'moment-timezone';
@@ -72,8 +72,8 @@ const QUICK_FILTERS = [
 ];
 
 const fetchHistorial = async (desde, hasta) => {
-  const { data, status } = await axios.get(
-    `${PRODUCTS_URL}ventas/historial?desde=${desde}&hasta=${hasta}`
+  const { data, status } = await api.get(
+    `ventas/historial?desde=${desde}&hasta=${hasta}`
   );
   if (status !== 200) return { ventas: [], desde, hasta, total: 0 };
   return data;
@@ -81,6 +81,8 @@ const fetchHistorial = async (desde, hasta) => {
 
 const Page = () => {
   const queryClient = useQueryClient();
+  const { user } = useAuthContext();
+  const isAdmin = user?.role === 'admin';
   const [fechaDesde, setFechaDesde] = useState(todayMX());
   const [fechaHasta, setFechaHasta] = useState(todayMX());
   const [activeFilter, setActiveFilter] = useState('Hoy');
@@ -123,7 +125,7 @@ const Page = () => {
     const result = await confirmAlert(`¿Anular la venta #${venta.id} (${itemsLabel(venta)})?`);
     if (!result.isConfirmed) return;
     try {
-      const { status } = await axios.delete(`${PRODUCTS_URL}ventas/${venta.id}`);
+      const { status } = await api.delete(`ventas/${venta.id}`);
       if (status === 204) {
         queryClient.invalidateQueries(['ventas-historial']);
         Swal.fire({ icon: 'success', title: 'Venta anulada', timer: 1500, showConfirmButton: false });
@@ -134,7 +136,7 @@ const Page = () => {
   };
 
   return (
-    <PinGuard>
+    <>
       <Head>
         <title>Historial de Ventas | Pitbulls Gym</title>
       </Head>
@@ -231,7 +233,7 @@ const Page = () => {
                     <TableCell>Total</TableCell>
                     <TableCell>Método</TableCell>
                     <TableCell>Fecha</TableCell>
-                    <TableCell align="right">Anular</TableCell>
+                    {isAdmin && <TableCell align="right">Anular</TableCell>}
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -255,11 +257,13 @@ const Page = () => {
                         />
                       </TableCell>
                       <TableCell>{formatDateTime(venta.fecha)}</TableCell>
-                      <TableCell align="right">
-                        <IconButton color="error" size="small" onClick={() => handleAnular(venta)}>
-                          <SvgIcon fontSize="small"><TrashIcon /></SvgIcon>
-                        </IconButton>
-                      </TableCell>
+                      {isAdmin && (
+                        <TableCell align="right">
+                          <IconButton color="error" size="small" onClick={() => handleAnular(venta)}>
+                            <SvgIcon fontSize="small"><TrashIcon /></SvgIcon>
+                          </IconButton>
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))}
                 </TableBody>
@@ -268,7 +272,7 @@ const Page = () => {
           </Stack>
         </Container>
       </Box>
-    </PinGuard>
+    </>
   );
 };
 

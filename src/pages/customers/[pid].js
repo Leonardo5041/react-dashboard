@@ -5,7 +5,7 @@ import { CustomerProfile } from 'src/sections/customer/customer-profile';
 import { CustomerProfileDetails } from 'src/sections/customer/customer-profile-details';
 import { CustomerMembership } from 'src/sections/customer/customer-membership';
 import { useRouter } from 'next/router';
-import axios from 'axios';
+import api from 'src/utils/api';
 import { useState, useEffect } from 'react';
 import { BACKEND_URL } from 'src/utils/get-initials';
 import { CustomerFingerPrint } from 'src/sections/customer/customer-fingerprint';
@@ -13,7 +13,7 @@ import {useQuery} from "@tanstack/react-query";
 
 const getCustomer = async (id) => {
     try {
-        const { data, status } = await axios.get(`${BACKEND_URL}clients/${id}`);
+        const { data, status } = await api.get(`clients/${id}`);
         if (status === 200) {
             return data;
         } else {

@@ -3,7 +3,7 @@ import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import {Box, Button, LinearProgress, Stack, TextField, Typography} from '@mui/material';
 import { Layout as DashboardLayout } from 'src/layouts/dashboard/layout';
-import axios from 'axios';
+import api from 'src/utils/api';
 import { useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { BACKEND_URL, confirmAlert } from 'src/utils/get-initials';
@@ -11,7 +11,7 @@ import {useQuery} from "@tanstack/react-query";
 
 const fetchMembership = async (id) => {
     try {
-        const { data, status } = await axios.get(`${BACKEND_URL}membership/${id}`);
+        const { data, status } = await api.get(`memberships/${id}`);
         if (status === 200) {
             return data;
         } else {
@@ -40,7 +40,7 @@ const Page = () => {
         request.price = parseFloat(request.price);
         request.duration = parseInt(request.duration);
         try {
-            const { data, status } = await axios.patch(`${BACKEND_URL}membership/${pid}`, request);
+            const { data, status } = await api.patch(`memberships/${pid}`, request);
             if (status === 200) {
                 await router.push('/companies');
             } else {
@@ -55,7 +55,7 @@ const Page = () => {
       const confirmResponse = await confirmAlert('¿Estas seguro de eliminar esta membresia?');
         if (!confirmResponse.isConfirmed) return;
         try {
-            const { data, status } = await axios.delete(`${BACKEND_URL}membership/${pid}`);
+            const { data, status } = await api.delete(`memberships/${pid}`);
             if (status === 200) {
                 await router.push('/companies');
             } else {

@@ -1,6 +1,7 @@
 import Head from 'next/head';
 import { useEffect, useRef, useState } from 'react';
 import {
+  Alert,
   Box,
   Button,
   Card,
@@ -8,6 +9,10 @@ import {
   Chip,
   CircularProgress,
   Container,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Divider,
   FormControl,
   IconButton,
@@ -17,7 +22,6 @@ import {
   MenuItem,
   Select,
   Snackbar,
-  Alert,
   Stack,
   SvgIcon,
   TextField,
@@ -34,25 +38,57 @@ import MinusIcon from '@heroicons/react/24/solid/MinusIcon';
 import TrashIcon from '@heroicons/react/24/solid/TrashIcon';
 import { Layout as DashboardLayout } from 'src/layouts/dashboard/layout';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import axios from 'axios';
+import api from 'src/utils/api';
 import { PRODUCTS_URL } from 'src/utils/get-initials';
+import { useAuthContext } from 'src/contexts/auth-context';
 import Swal from 'sweetalert2';
 
 const METODOS = ['Efectivo', 'Tarjeta', 'Transferencia', 'Gasto'];
 
 const fetchProducts = async () => {
-  const { data, status } = await axios.get(`${PRODUCTS_URL}productos`);
+  const { data, status } = await api.get('productos');
   if (status !== 200) return [];
   return data?.productos || [];
 };
 
 const Page = () => {
   const queryClient = useQueryClient();
+  const { user } = useAuthContext();
+  const isAdmin = user?.role === 'admin';
+
   const { isLoading, isError, data: products = [] } = useQuery(
     ['products-pos'],
     fetchProducts,
     { refetchOnWindowFocus: false }
   );
+
+  const { data: turnoData, isLoading: turnoLoading, refetch: refetchTurno } = useQuery(
+    ['corte-turno-pos'],
+    async () => { const { data } = await api.get('corte/turno'); return data; },
+    { refetchOnWindowFocus: false, enabled: !isAdmin }
+  );
+
+  const turnoIniciado = isAdmin || turnoData?.turno_iniciado === true;
+  const fondoActual = turnoData?.turno?.fondo_confirmado ?? 0;
+
+  const [iniciarDialog, setIniciarDialog] = useState(false);
+  const [fondoInput, setFondoInput] = useState('');
+  const [iniciando, setIniciando] = useState(false);
+
+  const handleIniciarTurno = async () => {
+    const monto = parseFloat(fondoInput) || 0;
+    setIniciando(true);
+    try {
+      await api.post('corte/turno', { fondo_confirmado: monto });
+      await refetchTurno();
+      setIniciarDialog(false);
+    } catch (err) {
+      const msg = err?.response?.data?.error || 'Error al iniciar turno';
+      Swal.fire({ icon: 'error', title: 'Error', text: msg });
+    } finally {
+      setIniciando(false);
+    }
+  };
 
   const [cart, setCart] = useState([]);
   const [metodo, setMetodo] = useState('Efectivo');
@@ -139,7 +175,7 @@ const Page = () => {
         payload = { metodo, items: cart.map((i) => ({ sku: i.product.sku, cantidad: i.cantidad })) };
       }
 
-      const { status, data } = await axios.post(`${PRODUCTS_URL}ventas`, payload);
+      const { status, data } = await api.post('ventas', payload);
       if (status === 201) {
         setCart([]);
         setGastoDesc('');
@@ -375,6 +411,46 @@ const Page = () => {
           SKU no encontrado en el catálogo
         </Alert>
       </Snackbar>
+
+      {/* Bloqueo si el cajero no ha iniciado turno */}
+      <Dialog
+        open={!isAdmin && !turnoLoading && !turnoIniciado}
+        maxWidth="xs"
+        fullWidth
+        disableEscapeKeyDown
+      >
+        <DialogTitle>Iniciar turno</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <Alert severity="info">
+              Debes iniciar tu turno antes de registrar ventas. Cuenta el efectivo en caja y confirma el monto.
+            </Alert>
+            <TextField
+              autoFocus
+              fullWidth
+              label="Efectivo en caja"
+              type="number"
+              value={fondoInput}
+              onChange={(e) => setFondoInput(e.target.value)}
+              InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }}
+              inputProps={{ min: 0, step: '0.01' }}
+              onKeyDown={(e) => e.key === 'Enter' && handleIniciarTurno()}
+              helperText={`Fondo configurado: $${fondoActual.toFixed(2)} MXN`}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            variant="contained"
+            color="success"
+            onClick={handleIniciarTurno}
+            disabled={iniciando || fondoInput === ''}
+            startIcon={iniciando ? <CircularProgress size={16} /> : null}
+          >
+            {iniciando ? 'Iniciando...' : 'Iniciar turno'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 };

@@ -13,6 +13,7 @@ import { Layout as DashboardLayout } from 'src/layouts/dashboard/layout';
 import { OverviewLatestOrders } from 'src/sections/overview/overview-latest-orders';
 import { OverviewTotalCustomers } from 'src/sections/overview/overview-total-customers';
 import axios from 'axios';
+import api from 'src/utils/api';
 import { OverviewBudget } from 'src/sections/overview/overview-budget';
 import { BACKEND_URL, PRODUCTS_URL } from 'src/utils/get-initials';
 import { useAuth } from '../hooks/use-auth';
@@ -21,7 +22,7 @@ import { OverviewTasksProgress } from '../sections/overview/overview-tasks-progr
 
 const fetchAlertasInventario = async () => {
   try {
-    const { data, status } = await axios.get(`${PRODUCTS_URL}inventario/alertas`);
+    const { data, status } = await api.get('inventario/alertas');
     if (status !== 200) return null;
     return data;
   } catch {
@@ -31,7 +32,7 @@ const fetchAlertasInventario = async () => {
 
 const getSubscriptions = async () => {
   try {
-    const { data, status } = await axios.get(`${BACKEND_URL}subscription/expiring`);
+    const { data, status } = await api.get('subscriptions/expiring');
     if (status !== 200) {
       return [];
     } else {
@@ -44,7 +45,7 @@ const getSubscriptions = async () => {
 
 const expiringSubscriptions = async (filter) => {
   try {
-    const { data, status } = await axios.get(`${BACKEND_URL}subscription/filter-by-expiration`, {
+    const { data, status } = await api.get('subscriptions/filter-by-expiration', {
       params: { filter }
     });
     if (status !== 200) {
@@ -59,12 +60,7 @@ const expiringSubscriptions = async (filter) => {
 
 const getClients = async () => {
   try {
-    const token = localStorage.getItem('token');
-    const { data, status } = await axios.get(`${BACKEND_URL}clients`, {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
+    const { data, status } = await api.get('clients');
     if (status !== 200) {
       return [];
     } else {

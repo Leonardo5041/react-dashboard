@@ -14,7 +14,7 @@ import {
 import { Layout as DashboardLayout } from 'src/layouts/dashboard/layout';
 import { CompanyCard } from 'src/sections/companies/company-card';
 import { CompaniesSearch } from 'src/sections/companies/companies-search';
-import axios from 'axios';
+import api from 'src/utils/api';
 import { useRouter } from 'next/router';
 import { useQuery } from '@tanstack/react-query';
 import { PRODUCTS_URL } from 'src/utils/get-initials';
@@ -23,7 +23,7 @@ import { ProductCard } from 'src/sections/products/product-card';
 
 const fetchProducts = async () => {
   try {
-    const { data = null, status } = await axios.get(`${PRODUCTS_URL}productos`);
+    const { data = null, status } = await api.get('productos');
     if (status !== 200) {
       return [];
     } else {

@@ -15,11 +15,15 @@ import { Logo } from 'src/components/logo';
 import { Scrollbar } from 'src/components/scrollbar';
 import { items } from './config';
 import { SideNavItem } from './side-nav-item';
+import { useAuthContext } from 'src/contexts/auth-context';
 
 export const SideNav = (props) => {
   const { open, onClose } = props;
   const pathname = usePathname();
   const lgUp = useMediaQuery((theme) => theme.breakpoints.up('lg'));
+  const { user } = useAuthContext();
+  const role = user?.role;
+  const visibleItems = items.filter((item) => !item.roles || item.roles.includes(role));
 
   const content = (
     <Scrollbar
@@ -104,7 +108,7 @@ export const SideNav = (props) => {
               m: 0
             }}
           >
-            {items.map((item) => {
+            {visibleItems.map((item) => {
               const active = item.path ? (pathname === item.path) : false;
 
               return (

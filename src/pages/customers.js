@@ -17,6 +17,7 @@ import {Layout as DashboardLayout} from 'src/layouts/dashboard/layout';
 import {CustomersTable} from 'src/sections/customer/customers-table';
 import {applyPagination} from 'src/utils/apply-pagination';
 import axios from 'axios';
+import api from 'src/utils/api';
 import {useRouter} from 'next/router';
 import MagnifyingGlassIcon from '@heroicons/react/24/solid/MagnifyingGlassIcon';
 import {BACKEND_URL} from 'src/utils/get-initials';
@@ -46,13 +47,8 @@ const useCustomerIds = (customers) => {
 };
 
 const fetchCustomers = async () => {
-    const token = localStorage.getItem('token');
     try {
-        const {data = null, status} = await axios.get(`${BACKEND_URL}clients`, {
-            headers: {
-              Authorization: `Bearer ${token}`
-            }
-        });
+        const {data = null, status} = await api.get('clients');
         if (status === 200) {
             return data;
         }

@@ -9,7 +9,7 @@ import {
   Stack,
   TextField
 } from '@mui/material';
-import axios from 'axios';
+import api from 'src/utils/api';
 import { useAuth } from 'src/hooks/use-auth';
 import { useRouter } from 'next/router';
 import { BACKEND_URL } from 'src/utils/get-initials';
@@ -53,12 +53,7 @@ export const SettingsPassword = () => {
       return;
     }
     try {
-      const updatedPassword = await axios.put(`${BACKEND_URL}users/update-password`, { password: values.confirm }, {
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const updatedPassword = await api.put('users/update-password', { password: values.confirm });
       if (updatedPassword.status === 200) {
         await Swal.fire({
           position: 'center-end',

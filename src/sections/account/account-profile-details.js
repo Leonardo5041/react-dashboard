@@ -12,7 +12,7 @@ import {
 } from '@mui/material';
 import { useAuth } from 'src/hooks/use-auth';
 import { BACKEND_URL } from 'src/utils/get-initials';
-import axios from 'axios';
+import api from 'src/utils/api';
 import { useRouter } from 'next/router';
 import Swal from 'sweetalert2';
 
@@ -39,11 +39,7 @@ export const AccountProfileDetails = () => {
       name: values.name,
     }
     try{
-      const updatedAdmin = await axios.patch(`${BACKEND_URL}users/update`, request, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const updatedAdmin = await api.patch('users/update', request);
       if(updatedAdmin.status === 200){
         await Swal.fire({
           position: 'center-end',

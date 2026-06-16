@@ -4,7 +4,7 @@ import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import { Box, Button, Stack, TextField, Typography } from '@mui/material';
 import { Layout as DashboardLayout } from 'src/layouts/dashboard/layout';
-import axios from 'axios';
+import api from 'src/utils/api';
 import { BACKEND_URL } from 'src/utils/get-initials';
 
 const Page = () => {
@@ -18,7 +18,7 @@ const Page = () => {
       phone: (phone !== '') ? phone.trim() : null,
     }
     try {
-      const { data, status } = await axios.post(`${BACKEND_URL}clients`, request);
+      const { data, status } = await api.post('clients', request);
       if (status === 201) {
         router.push('/customers');
       } else {

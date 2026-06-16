@@ -4,7 +4,7 @@ import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import { Box, Button, Stack, TextField, Typography } from '@mui/material';
 import { Layout as DashboardLayout } from 'src/layouts/dashboard/layout';
-import axios from 'axios';
+import api from 'src/utils/api';
 import { PRODUCTS_URL } from 'src/utils/get-initials';
 
 const Page = () => {
@@ -22,7 +22,7 @@ const Page = () => {
         request.precio = parseFloat(request.precio);
         request.stock = parseInt(request.stock);
         try {
-            const { data, status } = await axios.post(`${PRODUCTS_URL}productos`, request);
+            const { data, status } = await api.post('productos', request);
             if (status === 201) {
                 router.push('/products');
             } else {

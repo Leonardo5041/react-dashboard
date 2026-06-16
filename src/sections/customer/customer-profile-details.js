@@ -13,6 +13,7 @@ import {
 import axios from 'axios';
 import { useRouter } from 'next/router';
 import { BACKEND_URL, confirmAlert } from 'src/utils/get-initials';
+import { useAuthContext } from 'src/contexts/auth-context';
 
 const states = [
     {
@@ -27,6 +28,8 @@ const states = [
 
 export const CustomerProfileDetails = ({ user }) => {
     const router = useRouter();
+    const { user: authUser } = useAuthContext();
+    const isAdmin = authUser?.role === 'admin';
     const [values, setValues] = useState({
         name: '',
         email: '',
@@ -175,13 +178,15 @@ export const CustomerProfileDetails = ({ user }) => {
                 </CardContent>
                 <Divider />
                 <CardActions sx={{ justifyContent: 'flex-end' }}>
-                    <Button
-                        color="error"
-                        variant='contained'
-                        onClick={handleDelete}
-                    >
-                        Eliminar
-                    </Button>
+                    {isAdmin && (
+                        <Button
+                            color="error"
+                            variant='contained'
+                            onClick={handleDelete}
+                        >
+                            Eliminar
+                        </Button>
+                    )}
                     <Button variant="contained"
                         onClick={handleSubmit}>
                         Actualizar Cliente

@@ -1,6 +1,5 @@
 import Head from 'next/head';
 import { useState } from 'react';
-import { PinGuard } from 'src/components/pin-guard';
 import {
   Alert,
   Box,
@@ -27,24 +26,27 @@ import {
 } from '@mui/material';
 import { Layout as DashboardLayout } from 'src/layouts/dashboard/layout';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import axios from 'axios';
+import api from 'src/utils/api';
 import { PRODUCTS_URL } from 'src/utils/get-initials';
+import { useAuthContext } from 'src/contexts/auth-context';
 import Swal from 'sweetalert2';
 
 const fetchEstado = async () => {
-  const { data, status } = await axios.get(`${PRODUCTS_URL}inventario/estado`);
+  const { data, status } = await api.get('inventario/estado');
   if (status !== 200) return null;
   return data;
 };
 
 const fetchAlertas = async () => {
-  const { data, status } = await axios.get(`${PRODUCTS_URL}inventario/alertas`);
+  const { data, status } = await api.get('inventario/alertas');
   if (status !== 200) return null;
   return data;
 };
 
 const Page = () => {
   const queryClient = useQueryClient();
+  const { user } = useAuthContext();
+  const isAdmin = user?.role === 'admin';
   const { isLoading, data: estado } = useQuery(['inventario-estado'], fetchEstado, { refetchOnWindowFocus: false });
   const { data: alertasData } = useQuery(['inventario-alertas'], fetchAlertas, { refetchOnWindowFocus: false });
 
@@ -71,7 +73,7 @@ const Page = () => {
     }
     setSubmitting(true);
     try {
-      const { status } = await axios.put(`${PRODUCTS_URL}inventario/${editProduct.id}`, { stock: stockVal });
+      const { status } = await api.put(`inventario/${editProduct.id}`, { stock: stockVal });
       if (status === 200) {
         queryClient.invalidateQueries(['inventario-estado']);
         queryClient.invalidateQueries(['inventario-alertas']);
@@ -90,7 +92,7 @@ const Page = () => {
   const productos = estado?.productos || [];
 
   return (
-    <PinGuard>
+    <>
       <Head>
         <title>Inventario | Pitbulls Gym</title>
       </Head>
@@ -148,7 +150,7 @@ const Page = () => {
                     <TableCell>Stock</TableCell>
                     <TableCell>Mínimo</TableCell>
                     <TableCell>Estado</TableCell>
-                    <TableCell align="right">Ajustar stock</TableCell>
+                    {isAdmin && <TableCell align="right">Ajustar stock</TableCell>}
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -176,11 +178,13 @@ const Page = () => {
                             size="small"
                           />
                         </TableCell>
-                        <TableCell align="right">
-                          <Button size="small" variant="outlined" onClick={() => handleOpenEdit(p)}>
-                            Ajustar
-                          </Button>
-                        </TableCell>
+                        {isAdmin && (
+                          <TableCell align="right">
+                            <Button size="small" variant="outlined" onClick={() => handleOpenEdit(p)}>
+                              Ajustar
+                            </Button>
+                          </TableCell>
+                        )}
                       </TableRow>
                     );
                   })}
@@ -191,7 +195,7 @@ const Page = () => {
         </Container>
       </Box>
 
-      <Dialog open={!!editProduct} onClose={handleCloseEdit} maxWidth="xs" fullWidth>
+      <Dialog open={isAdmin && !!editProduct} onClose={handleCloseEdit} maxWidth="xs" fullWidth>
         <DialogTitle>Ajustar Stock — {editProduct?.nombre}</DialogTitle>
         <DialogContent>
           <TextField
@@ -217,7 +221,7 @@ const Page = () => {
           </Button>
         </DialogActions>
       </Dialog>
-    </PinGuard>
+    </>
   );
 };
 

@@ -14,7 +14,7 @@ import {
 import { Layout as DashboardLayout } from 'src/layouts/dashboard/layout';
 import { CompanyCard } from 'src/sections/companies/company-card';
 import { CompaniesSearch } from 'src/sections/companies/companies-search';
-import axios from 'axios';
+import api from 'src/utils/api';
 import { useRouter } from 'next/router';
 import { useQuery } from '@tanstack/react-query';
 import { BACKEND_URL } from 'src/utils/get-initials';
@@ -22,7 +22,7 @@ import { BACKEND_URL } from 'src/utils/get-initials';
 
 const fetchMemberships = async () => {
   try {
-    const { data = null, status } = await axios.get(`${BACKEND_URL}membership`);
+    const { data = null, status } = await api.get('memberships');
     if (status !== 200) {
       return [];
     } else {

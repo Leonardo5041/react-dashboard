@@ -1,5 +1,4 @@
 import Head from 'next/head';
-import { PinGuard } from 'src/components/pin-guard';
 import dynamic from 'next/dynamic';
 import {
   Box,
@@ -25,7 +24,7 @@ import ChevronDownIcon from '@heroicons/react/24/solid/ChevronDownIcon';
 import ChevronUpIcon from '@heroicons/react/24/solid/ChevronUpIcon';
 import { Layout as DashboardLayout } from 'src/layouts/dashboard/layout';
 import { useQuery } from '@tanstack/react-query';
-import axios from 'axios';
+import api from 'src/utils/api';
 import { PRODUCTS_URL, formatDateTime } from 'src/utils/get-initials';
 import { useMemo, useState, useEffect } from 'react';
 
@@ -34,7 +33,7 @@ const Chart = dynamic(() => import('react-apexcharts'), { ssr: false });
 const METODO_COLOR = { Efectivo: 'success', Tarjeta: 'info', Transferencia: 'warning', Gasto: 'error' };
 
 const fetchReporteSemanal = async () => {
-  const { data, status } = await axios.get(`${PRODUCTS_URL}corte/semanal`);
+  const { data, status } = await api.get('corte/semanal');
   if (status !== 200) return null;
   return data;
 };
@@ -64,7 +63,7 @@ const DiaRow = ({ dia }) => {
     const fechaISO = toISO(dia.fecha);
     setLoadingVentas(true);
     setErrorVentas(false);
-    axios.get(`${PRODUCTS_URL}corte/semanal/${fechaISO}`)
+    api.get(`corte/semanal/${fechaISO}`)
       .then(({ data }) => setVentas(data.ventas || []))
       .catch(() => setErrorVentas(true))
       .finally(() => setLoadingVentas(false));
@@ -189,7 +188,7 @@ const Page = () => {
   }), [dias]);
 
   return (
-    <PinGuard>
+    <>
       <Head>
         <title>Reporte Semanal | Pitbulls Gym</title>
       </Head>
@@ -294,7 +293,7 @@ const Page = () => {
           </Stack>
         </Container>
       </Box>
-    </PinGuard>
+    </>
   );
 };
 
