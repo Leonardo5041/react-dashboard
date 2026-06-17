@@ -170,8 +170,8 @@ const Page = () => {
     try {
       await api.post('corte/ciego', {
         efectivo_declarado: declarado,
-        tarjeta_declarada: 0,
-        transferencia_declarada: 0,
+        tarjeta_declarada: totalTarjeta,
+        transferencia_declarada: totalTransferencia,
       });
       await refetchCiego();
       const diferencia = declarado - totalEfectivo;
