@@ -4,6 +4,8 @@ import { useRouter } from 'next/navigation';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import { Box, Button, Divider, IconButton, InputAdornment, Snackbar, Stack, TextField, Tooltip, Typography } from '@mui/material';
+import EyeIcon from '@heroicons/react/24/solid/EyeIcon';
+import EyeSlashIcon from '@heroicons/react/24/solid/EyeSlashIcon';
 import { useAuth } from 'src/hooks/use-auth';
 import { Layout as DashboardLayout } from 'src/layouts/dashboard/layout';
 import Swal from 'sweetalert2';
@@ -16,6 +18,7 @@ const Page = () => {
   const [inviteLink, setInviteLink] = useState('');
   const [copied, setCopied] = useState(false);
   const [generatingLink, setGeneratingLink] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const formik = useFormik({
     initialValues: {
@@ -145,8 +148,19 @@ const Page = () => {
                 name="password"
                 onBlur={formik.handleBlur}
                 onChange={formik.handleChange}
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 value={formik.values.password}
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton onClick={() => setShowPassword((v) => !v)} edge="end">
+                        {showPassword
+                          ? <EyeSlashIcon style={{ width: 20, height: 20 }} />
+                          : <EyeIcon style={{ width: 20, height: 20 }} />}
+                      </IconButton>
+                    </InputAdornment>
+                  )
+                }}
               />
             </Stack>
             {formik.errors.submit && (

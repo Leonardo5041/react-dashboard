@@ -6,9 +6,13 @@ import {
   CardContent,
   CardHeader,
   Divider,
+  IconButton,
+  InputAdornment,
   Stack,
   TextField
 } from '@mui/material';
+import EyeIcon from '@heroicons/react/24/solid/EyeIcon';
+import EyeSlashIcon from '@heroicons/react/24/solid/EyeSlashIcon';
 import api from 'src/utils/api';
 import { useAuth } from 'src/hooks/use-auth';
 import { useRouter } from 'next/router';
@@ -22,6 +26,8 @@ export const SettingsPassword = () => {
     password: '',
     confirm: ''
   });
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
 
   const handleSignOut = useCallback(
@@ -87,16 +93,38 @@ export const SettingsPassword = () => {
               label="Nueva Contraseña"
               name="password"
               onChange={handleChange}
-              type="password"
+              type={showPassword ? 'text' : 'password'}
               value={values.password}
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton onClick={() => setShowPassword((v) => !v)} edge="end">
+                      {showPassword
+                        ? <EyeSlashIcon style={{ width: 20, height: 20 }} />
+                        : <EyeIcon style={{ width: 20, height: 20 }} />}
+                    </IconButton>
+                  </InputAdornment>
+                )
+              }}
             />
             <TextField
               fullWidth
               label="Confirmar Contraseña"
               name="confirm"
               onChange={handleChange}
-              type="password"
+              type={showConfirm ? 'text' : 'password'}
               value={values.confirm}
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton onClick={() => setShowConfirm((v) => !v)} edge="end">
+                      {showConfirm
+                        ? <EyeSlashIcon style={{ width: 20, height: 20 }} />
+                        : <EyeIcon style={{ width: 20, height: 20 }} />}
+                    </IconButton>
+                  </InputAdornment>
+                )
+              }}
             />
           </Stack>
         </CardContent>

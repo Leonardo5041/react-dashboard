@@ -6,12 +6,16 @@ import * as Yup from 'yup';
 import {
   Box,
   Button,
+  IconButton,
+  InputAdornment,
   Stack,
   Tab,
   Tabs,
   TextField,
   Typography
 } from '@mui/material';
+import EyeIcon from '@heroicons/react/24/solid/EyeIcon';
+import EyeSlashIcon from '@heroicons/react/24/solid/EyeSlashIcon';
 import { useAuth } from 'src/hooks/use-auth';
 import { Layout as AuthLayout } from 'src/layouts/auth/layout';
 import axios from 'axios';
@@ -41,6 +45,7 @@ const Page = () => {
   const authContext = useContext(AuthContext);
   const [method, setMethod] = useState('email');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const formik = useFormik({
     initialValues: {
       email: '',
@@ -187,8 +192,19 @@ const Page = () => {
                     name="password"
                     onBlur={formik.handleBlur}
                     onChange={formik.handleChange}
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     value={formik.values.password}
+                    InputProps={{
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <IconButton onClick={() => setShowPassword((v) => !v)} edge="end">
+                            {showPassword
+                              ? <EyeSlashIcon style={{ width: 20, height: 20 }} />
+                              : <EyeIcon style={{ width: 20, height: 20 }} />}
+                          </IconButton>
+                        </InputAdornment>
+                      )
+                    }}
                   />
                 </Stack>
                 {/* <FormHelperText sx={{ mt: 1 }}>
