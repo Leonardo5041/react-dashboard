@@ -19,6 +19,9 @@ import {
   InputAdornment,
   InputLabel,
   LinearProgress,
+  List,
+  ListItemButton,
+  ListItemText,
   MenuItem,
   Select,
   Snackbar,
@@ -36,6 +39,7 @@ import QrCodeIcon from '@heroicons/react/24/solid/QrCodeIcon';
 import PlusIcon from '@heroicons/react/24/solid/PlusIcon';
 import MinusIcon from '@heroicons/react/24/solid/MinusIcon';
 import TrashIcon from '@heroicons/react/24/solid/TrashIcon';
+import UserIcon from '@heroicons/react/24/solid/UserIcon';
 import { Layout as DashboardLayout } from 'src/layouts/dashboard/layout';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import api from 'src/utils/api';
@@ -98,6 +102,20 @@ const Page = () => {
   const [submitting, setSubmitting] = useState(false);
   const [scanNotFound, setScanNotFound] = useState(false);
 
+  const [clientDialogOpen, setClientDialogOpen] = useState(false);
+  const [clientSearch, setClientSearch] = useState('');
+  const [selectedClient, setSelectedClient] = useState(null);
+
+  const { data: allClients = [], isLoading: clientsLoading } = useQuery(
+    ['clients-pos'],
+    async () => { const { data } = await api.get('clients'); return data || []; },
+    { refetchOnWindowFocus: false, enabled: clientDialogOpen }
+  );
+
+  const filteredClients = allClients.filter((c) =>
+    c.name?.toLowerCase().includes(clientSearch.toLowerCase())
+  );
+
   const handleMetodoChange = (nuevoMetodo) => {
     setMetodo(nuevoMetodo);
     if (nuevoMetodo !== 'Gasto') setGastoLibre(false);
@@ -111,6 +129,13 @@ const Page = () => {
       Swal.fire({ icon: 'warning', title: 'Sin stock', text: `${product.nombre} no tiene unidades disponibles.`, confirmButtonColor: '#d33' });
       return;
     }
+    if (product.membership_id) {
+      const already = cart.find((i) => i.product.id === product.id);
+      if (already) {
+        Swal.fire({ icon: 'info', title: 'Una membresía por transacción', text: 'Para vender más de una membresía, registra transacciones separadas.', confirmButtonColor: '#1976d2' });
+        return;
+      }
+    }
     setCart((prev) => {
       const existing = prev.find((i) => i.product.id === product.id);
       if (existing) {
@@ -123,6 +148,13 @@ const Page = () => {
   };
 
   const updateQuantity = (productId, delta) => {
+    if (delta > 0) {
+      const item = cart.find((i) => i.product.id === productId);
+      if (item?.product.membership_id) {
+        Swal.fire({ icon: 'info', title: 'Una membresía por transacción', text: 'Para vender más de una membresía, registra transacciones separadas.', confirmButtonColor: '#1976d2' });
+        return;
+      }
+    }
     setCart((prev) =>
       prev
         .map((i) => i.product.id === productId ? { ...i, cantidad: i.cantidad + delta } : i)
@@ -164,7 +196,14 @@ const Page = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [products]);
 
-  const handleVenta = async () => {
+  const cartHasMembresia = cart.some((i) => i.product.membership_id);
+
+  const handleVenta = async (clientId) => {
+    if (cartHasMembresia && !clientId) {
+      setClientDialogOpen(true);
+      return;
+    }
+
     setSubmitting(true);
     try {
       let payload;
@@ -172,7 +211,11 @@ const Page = () => {
         payload = { metodo: 'Gasto', descripcion: gastoDesc.trim(), monto: parseFloat(gastoMonto) };
       } else {
         if (cart.length === 0) return;
-        payload = { metodo, items: cart.map((i) => ({ sku: i.product.sku, cantidad: i.cantidad })) };
+        payload = {
+          metodo,
+          items: cart.map((i) => ({ sku: i.product.sku, cantidad: i.cantidad })),
+          ...(clientId ? { client_id: clientId } : {})
+        };
       }
 
       const { status, data } = await api.post('ventas', payload);
@@ -180,6 +223,7 @@ const Page = () => {
         setCart([]);
         setGastoDesc('');
         setGastoMonto('');
+        setSelectedClient(null);
         queryClient.invalidateQueries(['products-pos']);
         Swal.fire({
           icon: 'success',
@@ -195,6 +239,13 @@ const Page = () => {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleClientConfirm = () => {
+    if (!selectedClient) return;
+    setClientDialogOpen(false);
+    setClientSearch('');
+    handleVenta(selectedClient.id);
   };
 
   const gastoLibreValido = gastoDesc.trim().length > 0 && parseFloat(gastoMonto) > 0;
@@ -364,13 +415,37 @@ const Page = () => {
                         </Stack>
                       )}
 
+                      {cartHasMembresia && (
+                        <Stack direction="row" alignItems="center" spacing={1}>
+                          {selectedClient ? (
+                            <Chip
+                              icon={<SvgIcon fontSize="small"><UserIcon /></SvgIcon>}
+                              label={selectedClient.name}
+                              color="success"
+                              onDelete={() => setSelectedClient(null)}
+                              size="small"
+                              sx={{ flex: 1 }}
+                            />
+                          ) : (
+                            <Chip
+                              icon={<SvgIcon fontSize="small"><UserIcon /></SvgIcon>}
+                              label="Cliente requerido"
+                              color="warning"
+                              variant="outlined"
+                              size="small"
+                              sx={{ flex: 1 }}
+                            />
+                          )}
+                        </Stack>
+                      )}
+
                       <Button
                         fullWidth
                         variant="contained"
                         size="large"
                         color={metodo === 'Gasto' ? 'error' : 'primary'}
                         disabled={submitDisabled}
-                        onClick={handleVenta}
+                        onClick={() => handleVenta(selectedClient?.id || null)}
                         startIcon={submitting ? <CircularProgress size={16} /> : null}
                       >
                         {metodo === 'Gasto' && gastoLibre
@@ -411,6 +486,67 @@ const Page = () => {
           SKU no encontrado en el catálogo
         </Alert>
       </Snackbar>
+
+      {/* Búsqueda de cliente para ventas con membresía */}
+      <Dialog open={clientDialogOpen} onClose={() => setClientDialogOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Seleccionar cliente</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <Alert severity="info">
+              Esta venta incluye una membresía. Selecciona el cliente al que se le asignará.
+            </Alert>
+            <TextField
+              autoFocus
+              fullWidth
+              size="small"
+              label="Buscar por nombre"
+              value={clientSearch}
+              onChange={(e) => setClientSearch(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SvgIcon fontSize="small"><UserIcon /></SvgIcon>
+                  </InputAdornment>
+                )
+              }}
+            />
+            {clientsLoading ? (
+              <CircularProgress size={24} sx={{ alignSelf: 'center' }} />
+            ) : (
+              <List dense disablePadding sx={{ maxHeight: 240, overflow: 'auto', border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
+                {filteredClients.length === 0 ? (
+                  <ListItemButton disabled>
+                    <ListItemText primary="Sin resultados" />
+                  </ListItemButton>
+                ) : filteredClients.map((client) => (
+                  <ListItemButton
+                    key={client.id}
+                    selected={selectedClient?.id === client.id}
+                    onClick={() => setSelectedClient(client)}
+                  >
+                    <ListItemText
+                      primary={client.name}
+                      secondary={client.email || `#${client.client_number}`}
+                    />
+                  </ListItemButton>
+                ))}
+              </List>
+            )}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => { setClientDialogOpen(false); setClientSearch(''); }}>
+            Cancelar
+          </Button>
+          <Button
+            variant="contained"
+            disabled={!selectedClient}
+            onClick={handleClientConfirm}
+          >
+            Confirmar y cobrar
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Bloqueo si el cajero no ha iniciado turno */}
       <Dialog

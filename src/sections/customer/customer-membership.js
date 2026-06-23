@@ -17,7 +17,7 @@ import {BACKEND_URL} from 'src/utils/get-initials';
 import {DatePicker} from '@mui/x-date-pickers';
 import * as moment from 'moment-timezone';
 
-export const CustomerMembership = ({user}) => {
+export const CustomerMembership = ({user, readOnly = false}) => {
     const router = useRouter();
     const [values, setValues] = useState({
         subscription: '',
@@ -134,11 +134,11 @@ export const CustomerMembership = ({user}) => {
         <form
             autoComplete="off"
             noValidate
-            onSubmit={handleSubmit}
+            onSubmit={readOnly ? (e) => e.preventDefault() : handleSubmit}
         >
             <Card>
                 <CardHeader
-                    subheader="Actualizar Membresia del Cliente"
+                    subheader={readOnly ? 'Solo el administrador puede modificar la membresía' : 'Actualizar Membresia del Cliente'}
                     title="Membresia"
                 />
                 <CardContent sx={{pt: 0}}>
@@ -160,6 +160,7 @@ export const CustomerMembership = ({user}) => {
                                     select
                                     SelectProps={{native: true}}
                                     value={values.membership_id || '123'}
+                                    disabled={readOnly}
                                 >
                                     {
                                         memberships.map((option) => (
@@ -186,6 +187,7 @@ export const CustomerMembership = ({user}) => {
                                     value={startDate}
                                     timezone={'system'}
                                     inputFormat={'dd/MMM/yyyy'}
+                                    disabled={readOnly}
                                     renderInput={(params) => <TextField variant={'outlined'} {...params} />}
                                 />
                             </Grid>
@@ -242,14 +244,16 @@ export const CustomerMembership = ({user}) => {
                     </Box>
                 </CardContent>
                 <Divider/>
-                <CardActions sx={{justifyContent: 'flex-end'}}>
-                    <Button variant="contained"
-                            color="success"
-                            onClick={handleSubmit}
-                    >
-                        Actualizar subscripcion
-                    </Button>
-                </CardActions>
+                {!readOnly && (
+                    <CardActions sx={{justifyContent: 'flex-end'}}>
+                        <Button variant="contained"
+                                color="success"
+                                onClick={handleSubmit}
+                        >
+                            Actualizar subscripcion
+                        </Button>
+                    </CardActions>
+                )}
             </Card>
         </form>
     );

@@ -5,8 +5,11 @@ import { createShadows } from './create-shadows';
 import { createTypography } from './create-typography';
 
 export function createTheme() {
-  const date = new Date().toLocaleString('es-MX', { timeZone: 'America/Mexico_City' });
-  const hour = parseInt(date.split(' ')[1].split(':')[0]);
+  const hour = parseInt(new Intl.DateTimeFormat('es-MX', {
+    hour: 'numeric',
+    hour12: false,
+    timeZone: 'America/Mexico_City'
+  }).format(new Date()));
   const isDark = hour >= 17 || hour <= 7;
   const palette = createPalette(isDark);
   const components = createComponents({ palette });

@@ -10,6 +10,7 @@ import { useState, useEffect } from 'react';
 import { BACKEND_URL } from 'src/utils/get-initials';
 import { CustomerFingerPrint } from 'src/sections/customer/customer-fingerprint';
 import {useQuery} from "@tanstack/react-query";
+import { useAuthContext } from 'src/contexts/auth-context';
 
 const getCustomer = async (id) => {
     try {
@@ -26,6 +27,8 @@ const getCustomer = async (id) => {
 const Page = () => {
     const router = useRouter();
     const { pid } = router.query;
+    const { user } = useAuthContext();
+    const isAdmin = user?.role === 'admin';
     const { isError, isLoading, data: customer = null } = useQuery(['customer'], async () => await getCustomer(pid));
 
     return (
@@ -89,7 +92,7 @@ const Page = () => {
                                     md={6}
                                     lg={12}
                                 >
-                                    <CustomerMembership user={customer}/>
+                                    <CustomerMembership user={customer} readOnly={!isAdmin} />
                                 </Grid>
                             </Grid>
                         </div>
