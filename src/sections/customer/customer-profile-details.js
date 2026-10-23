@@ -10,9 +10,9 @@ import {
     TextField,
     Unstable_Grid2 as Grid
 } from '@mui/material';
-import axios from 'axios';
 import { useRouter } from 'next/router';
-import { BACKEND_URL, confirmAlert } from 'src/utils/get-initials';
+import { confirmAlert } from 'src/utils/get-initials';
+import api from 'src/utils/api';
 import { useAuthContext } from 'src/contexts/auth-context';
 
 const states = [
@@ -71,7 +71,7 @@ export const CustomerProfileDetails = ({ user }) => {
             active: active
         };
         try {
-            const { data } = await axios.patch(`${BACKEND_URL}clients/${user.id}`, request);
+            const { data } = await api.patch(`clients/${user.id}`, request);
             if (data?.affected > 0) router.reload();
         }
         catch (error) {
@@ -84,7 +84,7 @@ export const CustomerProfileDetails = ({ user }) => {
         try {
             const confirmDelete = await confirmAlert('¿Estas seguro de eliminar este cliente?');
             if (confirmDelete.isConfirmed) {
-                const { data } = await axios.delete(`${BACKEND_URL}clients/${user.id}`);
+                const { data } = await api.delete(`clients/${user.id}`);
                 if (data?.affected > 0) router.push('/customers')
             }
         }
