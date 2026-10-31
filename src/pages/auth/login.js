@@ -85,7 +85,7 @@ const Page = () => {
         Swal.close();
         setLoading(false);
         if (axios.isAxiosError(err)) {
-          const message = mapError[err.response.data.message];
+          const message = err.response?.data?.error || err.response?.data?.message || 'Correo o contraseña incorrectos';
           helpers.setStatus({ success: false });
           helpers.setErrors({ submit: message });
           helpers.setSubmitting(false);

@@ -1,13 +1,13 @@
 import Head from 'next/head';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
-import {Box, Button, LinearProgress, Stack, TextField, Typography} from '@mui/material';
+import { Box, Button, FormControlLabel, LinearProgress, MenuItem, Stack, Switch, TextField, Typography } from '@mui/material';
 import { Layout as DashboardLayout } from 'src/layouts/dashboard/layout';
 import api from 'src/utils/api';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { PRODUCTS_URL, confirmAlert } from 'src/utils/get-initials';
-import {useQuery} from "@tanstack/react-query";
+import { confirmAlert } from 'src/utils/get-initials';
+import { useQuery } from '@tanstack/react-query';
 
 const fetchProduct = async (id) => {
     try {
@@ -21,21 +21,32 @@ const fetchProduct = async (id) => {
         throw new Error(err);
     }
 }
+
 const Page = () => {
     const router = useRouter();
     const { pid } = router.query;
-    const {isLoading, isError, data} = useQuery(['product', pid], async () => await fetchProduct(pid), {
+    const { isLoading, isError, data } = useQuery(['product', pid], async () => await fetchProduct(pid), {
         refetchOnWindowFocus: false,
-        staleTime: 1000 * 60 * 60 * 24 * 1 // 1 day
+        staleTime: 1000 * 60 * 60 * 24 * 1
     });
 
-    const updateProduct = async (data) => {
-        const { sku, nombre, precio, minimo } = data;
+    const [isMembresia, setIsMembresia] = useState(false);
+    const [memberships, setMemberships] = useState([]);
+
+    useEffect(() => {
+        api.get('memberships')
+            .then(({ data }) => setMemberships(data || []))
+            .catch(() => setMemberships([]));
+    }, []);
+
+    const updateProduct = async (values) => {
+        const { sku, nombre, precio, minimo, membership_id } = values;
         const productRequest = {
             sku: sku.trim(),
             nombre: nombre.trim(),
             precio: parseFloat(precio),
-            minimo: parseInt(minimo)
+            minimo: parseInt(minimo),
+            ...(isMembresia && membership_id ? { membership_id } : { membership_id: null })
         };
         try {
             const { status } = await api.put(`productos/${pid}`, productRequest);
@@ -48,7 +59,7 @@ const Page = () => {
     };
 
     const deleteProduct = async () => {
-      const confirmResponse = await confirmAlert('¿Estas seguro de eliminar este producto?');
+        const confirmResponse = await confirmAlert('¿Estas seguro de eliminar este producto?');
         if (!confirmResponse.isConfirmed) return;
         try {
             const { data, status } = await api.delete(`productos/${pid}`);
@@ -60,7 +71,7 @@ const Page = () => {
         } catch (err) {
             console.error(err);
         }
-    }
+    };
 
     const formik = useFormik({
         initialValues: {
@@ -68,7 +79,8 @@ const Page = () => {
             nombre: '',
             precio: 0,
             stock: 0,
-            minimo: 0
+            minimo: 0,
+            membership_id: ''
         },
         validationSchema: Yup.object({
             sku: Yup
@@ -100,15 +112,19 @@ const Page = () => {
         }
     });
 
-    const initialValues = {
-        sku: (data) ? data?.sku : '',
-        nombre: (data) ? data?.nombre : '',
-        precio: (data) ? data?.precio : 0,
-        stock: (data) ? data?.stock : 0,
-        minimo: (data) ? data?.minimo : 0
-    }
     useEffect(() => {
-        formik.setValues(initialValues);
+        if (!data) return;
+        formik.setValues({
+            sku: data?.sku ?? '',
+            nombre: data?.nombre ?? '',
+            precio: data?.precio ?? 0,
+            stock: data?.stock ?? 0,
+            minimo: data?.minimo ?? 0,
+            membership_id: data?.membership_id ?? ''
+        });
+        if (data?.membership_id) {
+            setIsMembresia(true);
+        }
     }, [data]);
 
     return (
@@ -144,18 +160,12 @@ const Page = () => {
                             </Typography>
                         </Stack>
 
-                        {
-                            isLoading && (
-                                <LinearProgress />
-                            )
-                        }
-                        {
-                            isError && (
-                                <Typography variant="h4">
-                                    Error al cargar el producto
-                                </Typography>
-                            )
-                        }
+                        {isLoading && <LinearProgress />}
+                        {isError && (
+                            <Typography variant="h4">
+                                Error al cargar el producto
+                            </Typography>
+                        )}
                         <form
                             noValidate
                             onSubmit={formik.handleSubmit}
@@ -174,7 +184,7 @@ const Page = () => {
                                     autoFocus
                                 />
                                 <TextField
-                                    error={!!(formik.touched.name && formik.errors.name)}
+                                    error={!!(formik.touched.nombre && formik.errors.nombre)}
                                     fullWidth
                                     helperText={formik.touched.nombre && formik.errors.nombre}
                                     label="Nombre del producto"
@@ -183,7 +193,6 @@ const Page = () => {
                                     onChange={formik.handleChange}
                                     value={formik.values.nombre}
                                 />
-                                
                                 <TextField
                                     error={!!(formik.touched.precio && formik.errors.precio)}
                                     fullWidth
@@ -214,6 +223,37 @@ const Page = () => {
                                     type="number"
                                     value={formik.values.minimo}
                                 />
+                                <FormControlLabel
+                                    control={
+                                        <Switch
+                                            checked={isMembresia}
+                                            onChange={(e) => {
+                                                setIsMembresia(e.target.checked);
+                                                if (!e.target.checked) {
+                                                    formik.setFieldValue('membership_id', '');
+                                                }
+                                            }}
+                                        />
+                                    }
+                                    label="¿Es producto de membresía?"
+                                />
+                                {isMembresia && (
+                                    <TextField
+                                        select
+                                        fullWidth
+                                        label="Membresía vinculada"
+                                        name="membership_id"
+                                        value={formik.values.membership_id}
+                                        onChange={formik.handleChange}
+                                    >
+                                        <MenuItem value="">Seleccionar</MenuItem>
+                                        {memberships.map((m) => (
+                                            <MenuItem key={m.id} value={m.id}>
+                                                {m.description}
+                                            </MenuItem>
+                                        ))}
+                                    </TextField>
+                                )}
                             </Stack>
                             {formik.errors.submit && (
                                 <Typography
@@ -238,7 +278,7 @@ const Page = () => {
                                 size="small"
                                 sx={{ mt: 3 }}
                                 onClick={() => deleteProduct()}
-                                color='error'
+                                color="error"
                                 variant="contained"
                             >
                                 Eliminar Producto
