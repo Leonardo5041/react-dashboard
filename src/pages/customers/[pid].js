@@ -6,8 +6,6 @@ import { CustomerProfileDetails } from 'src/sections/customer/customer-profile-d
 import { CustomerMembership } from 'src/sections/customer/customer-membership';
 import { useRouter } from 'next/router';
 import api from 'src/utils/api';
-import { useState, useEffect } from 'react';
-import { BACKEND_URL } from 'src/utils/get-initials';
 import { CustomerFingerPrint } from 'src/sections/customer/customer-fingerprint';
 import {useQuery} from "@tanstack/react-query";
 import { useAuthContext } from 'src/contexts/auth-context';
@@ -29,7 +27,11 @@ const Page = () => {
     const { pid } = router.query;
     const { user } = useAuthContext();
     const isAdmin = user?.role === 'admin';
-    const { isError, isLoading, data: customer = null } = useQuery(['customer'], async () => await getCustomer(pid));
+    const { isError, isLoading, data: customer = null } = useQuery(
+        ['customer', pid],
+        async () => await getCustomer(pid),
+        { enabled: !!pid }
+    );
 
     return (
         <>

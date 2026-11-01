@@ -7,102 +7,151 @@ import {
   CardContent,
   Divider
 } from '@mui/material';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Swal from 'sweetalert2';
+import { useQueryClient } from '@tanstack/react-query';
 import { SOCKET_URL } from '../../socket';
-import { useRouter } from 'next/router';
 
-const SavingCard = () => {
-  return (
-    Swal.fire({
-      title: 'Por favor acerque la tarjeta al lector',
-      text: 'Guardando tarjeta',
-      icon: 'info',
-      allowOutsideClick: false,
-      showCancelButton: true
-    }) && Swal.showLoading()
-  );
-};
+const REGISTER_TIMEOUT_MS = 90000;
+const RECONNECT_DELAY_MS = 3000;
+
 export const CustomerFingerPrint = ({ user }) => {
+  const queryClient = useQueryClient();
   const socket = useRef(null);
-  const router = useRouter();
-  const [loadingCard, setLoadingCard] = useState(false);
+  const mounted = useRef(true);
+  const reconnectTimer = useRef(null);
+  const registerTimer = useRef(null);
+  // Client waiting for a card swipe. Null when no registration is in progress.
+  const pendingUserId = useRef(null);
+  // True once save-card was sent and we wait for the backend response.
+  const awaitingSave = useRef(false);
+  const [registering, setRegistering] = useState(false);
+
+  const clearPending = useCallback(() => {
+    clearTimeout(registerTimer.current);
+    registerTimer.current = null;
+    pendingUserId.current = null;
+    awaitingSave.current = false;
+    setRegistering(false);
+  }, []);
+
+  const failRegistration = useCallback((text) => {
+    clearPending();
+    Swal.fire({
+      title: 'Tarjeta no registrada',
+      text,
+      icon: 'error',
+      allowOutsideClick: false
+    });
+  }, [clearPending]);
+
+  const handleMessage = useCallback(async (event) => {
+    let data;
+    try {
+      data = JSON.parse(event?.data);
+    } catch {
+      return;
+    }
+    if (!pendingUserId.current) {
+      return;
+    }
+
+    // Backend response to our save-card.
+    if (data?.['save-card'] !== undefined) {
+      if (!awaitingSave.current) {
+        return;
+      }
+      const saved = data.response === true;
+      clearPending();
+      if (saved) {
+        await queryClient.invalidateQueries(['customer']);
+        await Swal.fire({
+          title: 'Tarjeta registrada',
+          text: 'Tarjeta registrada con éxito',
+          icon: 'success',
+          allowOutsideClick: false,
+          timer: 1500
+        });
+      } else {
+        await Swal.fire({
+          title: 'Tarjeta no registrada',
+          text: 'No se pudo asignar la tarjeta. Puede que pertenezca a otro cliente.',
+          icon: 'error',
+          allowOutsideClick: false
+        });
+      }
+      return;
+    }
+
+    if (awaitingSave.current || data?.access === undefined) {
+      return;
+    }
+
+    // Unregistered card read: assign it to the pending client.
+    if (data.card) {
+      if (socket.current?.readyState !== WebSocket.OPEN) {
+        failRegistration('Se perdió la conexión con el lector.');
+        return;
+      }
+      awaitingSave.current = true;
+      socket.current.send(JSON.stringify({
+        action: 'save-card',
+        user_id: pendingUserId.current,
+        card_id: data.card
+      }));
+      Swal.update({ title: 'Guardando tarjeta', text: 'Asignando tarjeta al cliente...' });
+      Swal.showLoading();
+      return;
+    }
+
+    // Card read but it is already registered: backend never sends `card` for it.
+    failRegistration('La tarjeta leída ya está registrada. Use una tarjeta nueva.');
+  }, [clearPending, failRegistration, queryClient]);
+
+  // Keep the socket handler pointing at the latest callback without reconnecting.
+  const handleMessageRef = useRef(handleMessage);
+  useEffect(() => {
+    handleMessageRef.current = handleMessage;
+  }, [handleMessage]);
 
   useEffect(() => {
-    socket.current = new WebSocket(SOCKET_URL);
-
-    socket.current.onopen = () => {
-    };
-
-    socket.current.onmessage = async (event) => {
-      const data = JSON.parse(event?.data);
-      if (data?.['save-card']) {
-        const { response } = data;
-        await registerCard(response);
-      } else if (data?.card) {
-        if (data?.card) {
-          const userId = localStorage.getItem('user-id');
-          const idCard = data.card;
-          socket.current.send(JSON.stringify({
-            action: 'save-card',
-            user_id: userId,
-            card_id: idCard
-          }));
-          setLoadingCard(false);
-          localStorage.removeItem('user-id');
-          router.reload();
-          socket.current.close;
-        }
-      }
-    };
-
-    // socket.on('register-card', (data) => {
-    //   setLoadingCard(true);
-    //   registerCard(true).then(() => {
-    //   }).catch(() => {
-    //   });
-    // });
-    // socket.on('access', async (data) => {
-    //   if (data.card) {
-    //     const userId = localStorage.getItem('user-id');
-    //     const idCard = data.card;
-    //     socket.emit('save-card', { user_id: userId, card_id: idCard });
-    //     setLoadingCard(false);
-    //     localStorage.removeItem('user-id');
-    //     router.reload();
-    //     socket.off('access');
-    //   }
-    // });
-    // socket.on('save-card', async (data) => {
-    //   const { result } = data;
-    //   await registerCard(result);
-    // });
-    return () => {
-      if (socket.current.readyState === WebSocket.OPEN) {
-        socket.current.close();
-      }
-    };
-  }, [router]);
-
-  const registerCard = async (value) => {
-    if (value) {
-      await Swal.fire({
-        title: 'Tarjeta registrada',
-        text: 'Tarjeta registrada con éxito',
-        icon: 'success',
-        allowOutsideClick: false,
-        //cerrar el modal despues de 2 segundos
-        timer: 1500
-      });
-    } else {
-      await Swal.fire({
-        title: 'Tarjeta no registrada',
-        text: 'Tarjeta no registrada con éxito',
-        icon: 'error',
-        allowOutsideClick: false
-      });
+    mounted.current = true;
+    // Leftover from the previous implementation, which kept the pending client in localStorage.
+    try {
+      localStorage.removeItem('user-id');
+    } catch {
+      // ignore
     }
-  };
+
+    const connect = () => {
+      if (!mounted.current) return;
+      const ws = new WebSocket(SOCKET_URL);
+      socket.current = ws;
+
+      ws.onmessage = (event) => handleMessageRef.current(event);
+
+      ws.onclose = () => {
+        if (!mounted.current) return;
+        if (pendingUserId.current) {
+          failRegistration('Se perdió la conexión con el lector. Intente de nuevo.');
+        }
+        reconnectTimer.current = setTimeout(connect, RECONNECT_DELAY_MS);
+      };
+
+      ws.onerror = () => ws.close();
+    };
+
+    connect();
+
+    return () => {
+      mounted.current = false;
+      clearTimeout(reconnectTimer.current);
+      clearTimeout(registerTimer.current);
+      pendingUserId.current = null;
+      awaitingSave.current = false;
+      socket.current?.close();
+    };
+  }, [failRegistration]);
 
   const handleSubmit = async (userId) => {
     const confirmResponse = await Swal.fire({
@@ -118,72 +167,88 @@ export const CustomerFingerPrint = ({ user }) => {
       return;
     }
 
-    try {
-      localStorage.setItem('user-id', userId);
-      setLoadingCard(true);
-    } catch (error) {
-      console.log(error);
+    if (socket.current?.readyState !== WebSocket.OPEN) {
+      await Swal.fire({
+        title: 'Sin conexión',
+        text: 'No hay conexión con el lector. Espere unos segundos e intente de nuevo.',
+        icon: 'error'
+      });
+      return;
+    }
+
+    clearPending();
+    pendingUserId.current = userId;
+    setRegistering(true);
+    registerTimer.current = setTimeout(() => {
+      if (pendingUserId.current === userId) {
+        failRegistration('No se detectó ninguna tarjeta en 90 segundos.');
+      }
+    }, REGISTER_TIMEOUT_MS);
+
+    const result = await Swal.fire({
+      title: 'Por favor acerque la tarjeta al lector',
+      text: 'Esperando tarjeta nueva...',
+      icon: 'info',
+      allowOutsideClick: false,
+      showConfirmButton: false,
+      showCancelButton: true,
+      cancelButtonText: 'Cancelar',
+      didOpen: () => Swal.showLoading()
+    });
+
+    const cancelled = [
+      Swal.DismissReason.cancel,
+      Swal.DismissReason.esc,
+      Swal.DismissReason.close
+    ].includes(result?.dismiss);
+    if (cancelled && pendingUserId.current === userId) {
+      clearPending();
     }
   };
+
   return (
-    <>
-      {
-        (loadingCard) && <SavingCard/>
-      }
-      <Card>
-        <CardContent>
-          <Box
-            sx={{
-              alignItems: 'center',
-              display: 'flex',
-              flexDirection: 'column'
-            }}
-          >
-            {
-              (user?.fingerprint_secret) ?
-                <Alert
-                  color="info"
-                  severity="info"
-                >
-                  <div>
-                    El cliente cuenta con una <b>tarjeta</b> asignada.
-                  </div>
-                </Alert>
-                :
-                <Alert
-                  color="warning"
-                  severity="warning"
-                >
-                  <div>
-                    El cliente no tiene una <b>tarjeta</b> asignada.
-                  </div>
-                </Alert>
-            }
-          </Box>
-        </CardContent>
-        <Divider/>
-        <CardActions>
+    <Card>
+      <CardContent>
+        <Box
+          sx={{
+            alignItems: 'center',
+            display: 'flex',
+            flexDirection: 'column'
+          }}
+        >
           {
             (user?.fingerprint_secret) ?
-              <Button
-                fullWidth
-                variant="text"
-                onClick={() => handleSubmit(user.id)}
+              <Alert
+                color="info"
+                severity="info"
               >
-                Actualizar Tarjeta de Acceso
-              </Button>
+                <div>
+                  El cliente cuenta con una <b>tarjeta</b> asignada.
+                </div>
+              </Alert>
               :
-              <Button
-                fullWidth
-                variant="text"
-                onClick={() => handleSubmit(user.id)}
+              <Alert
+                color="warning"
+                severity="warning"
               >
-                Agregar Tarjeta de Acceso
-              </Button>
+                <div>
+                  El cliente no tiene una <b>tarjeta</b> asignada.
+                </div>
+              </Alert>
           }
-
-        </CardActions>
-      </Card>
-    </>
+        </Box>
+      </CardContent>
+      <Divider/>
+      <CardActions>
+        <Button
+          fullWidth
+          variant="text"
+          disabled={!user?.id || registering}
+          onClick={() => handleSubmit(user.id)}
+        >
+          {(user?.fingerprint_secret) ? 'Actualizar Tarjeta de Acceso' : 'Agregar Tarjeta de Acceso'}
+        </Button>
+      </CardActions>
+    </Card>
   );
 };
