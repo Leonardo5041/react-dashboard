@@ -40,6 +40,10 @@ import PlusIcon from '@heroicons/react/24/solid/PlusIcon';
 import MinusIcon from '@heroicons/react/24/solid/MinusIcon';
 import TrashIcon from '@heroicons/react/24/solid/TrashIcon';
 import UserIcon from '@heroicons/react/24/solid/UserIcon';
+import PrinterIcon from '@heroicons/react/24/solid/PrinterIcon';
+import Cog6ToothIcon from '@heroicons/react/24/solid/Cog6ToothIcon';
+import { debeImprimirAutomatico, imprimirTicket } from 'src/utils/printing';
+import { PrinterSettingsDialog } from 'src/sections/sales/printer-settings-dialog';
 import { Layout as DashboardLayout } from 'src/layouts/dashboard/layout';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import api from 'src/utils/api';
@@ -105,6 +109,39 @@ const Page = () => {
   const [clientDialogOpen, setClientDialogOpen] = useState(false);
   const [clientSearch, setClientSearch] = useState('');
   const [selectedClient, setSelectedClient] = useState(null);
+
+  // ─── Ticket ───────────────────────────────────────────────────────────────
+  // Solo se conserva el último ticket (en memoria, hasta el siguiente cobro o recargar).
+  const [lastTicket, setLastTicket] = useState(null);
+  const [lastTicketImpreso, setLastTicketImpreso] = useState(false);
+  const [printerDialogOpen, setPrinterDialogOpen] = useState(false);
+
+  const { data: dryRunActivo = false } = useQuery(
+    ['health-dry-run'],
+    async () => {
+      const res = await fetch(new URL('../../health', PRODUCTS_URL).toString());
+      const body = await res.json();
+      return body?.dry_run === true;
+    },
+    { refetchOnWindowFocus: false, retry: false }
+  );
+
+  const imprimir = async (ticket, copia) => {
+    try {
+      await imprimirTicket(ticket, { copia });
+      setLastTicketImpreso(true);
+    } catch (err) {
+      const { isConfirmed } = await Swal.fire({
+        icon: 'warning',
+        title: 'No se pudo imprimir el ticket',
+        text: `La venta sí quedó registrada. ${err?.message || ''}`.trim(),
+        showCancelButton: true,
+        confirmButtonText: 'Reintentar',
+        cancelButtonText: 'Cerrar'
+      });
+      if (isConfirmed) imprimir(ticket, copia);
+    }
+  };
 
   const { data: allClients = [], isLoading: clientsLoading } = useQuery(
     ['clients-pos'],
@@ -232,6 +269,14 @@ const Page = () => {
           timer: 2000,
           showConfirmButton: false
         });
+
+        // Ticket: se guarda el último (no para gastos) y se imprime solo si es membresía.
+        const ticket = metodo !== 'Gasto' ? data?.ticket : null;
+        setLastTicket(ticket || null);
+        setLastTicketImpreso(false);
+        if (ticket && debeImprimirAutomatico(ticket)) {
+          imprimir(ticket, false);
+        }
       }
     } catch (err) {
       const msg = err?.response?.data?.error || 'Error al registrar';
@@ -261,14 +306,30 @@ const Page = () => {
           <Stack spacing={3}>
             <Stack direction="row" justifyContent="space-between" alignItems="center">
               <Typography variant="h4">Punto de Venta</Typography>
-              <Chip
-                icon={<SvgIcon fontSize="small"><QrCodeIcon /></SvgIcon>}
-                label="Lector de barras activo"
-                color="success"
-                variant="outlined"
-                size="small"
-              />
+              <Stack direction="row" alignItems="center" spacing={1}>
+                <Chip
+                  icon={<SvgIcon fontSize="small"><QrCodeIcon /></SvgIcon>}
+                  label="Lector de barras activo"
+                  color="success"
+                  variant="outlined"
+                  size="small"
+                />
+                <IconButton
+                  size="small"
+                  title="Impresora de tickets"
+                  aria-label="Configurar impresora de tickets"
+                  onClick={() => setPrinterDialogOpen(true)}
+                >
+                  <SvgIcon fontSize="small"><Cog6ToothIcon /></SvgIcon>
+                </IconButton>
+              </Stack>
             </Stack>
+
+            {dryRunActivo && (
+              <Alert severity="warning" variant="filled">
+                MODO PRUEBA (DRY_RUN): las ventas no se guardan y los tickets salen marcados como prueba.
+              </Alert>
+            )}
 
             {isLoading && <LinearProgress color="secondary" />}
             {isError && <Typography color="error">Error al cargar los productos</Typography>}
@@ -467,6 +528,19 @@ const Page = () => {
                           Vaciar carrito
                         </Button>
                       )}
+
+                      {lastTicket && (
+                        <Button
+                          fullWidth
+                          variant="outlined"
+                          size="small"
+                          startIcon={<SvgIcon fontSize="small"><PrinterIcon /></SvgIcon>}
+                          onClick={() => imprimir(lastTicket, lastTicketImpreso)}
+                          disabled={submitting}
+                        >
+                          {lastTicketImpreso ? 'Reimprimir último ticket' : 'Imprimir ticket'}
+                        </Button>
+                      )}
                     </Stack>
                   </CardContent>
                 </Card>
@@ -587,6 +661,8 @@ const Page = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <PrinterSettingsDialog open={printerDialogOpen} onClose={() => setPrinterDialogOpen(false)} />
     </>
   );
 };

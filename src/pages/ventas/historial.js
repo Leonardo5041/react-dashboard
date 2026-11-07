@@ -31,7 +31,7 @@ import { PRODUCTS_URL, confirmAlert, formatDateTime } from 'src/utils/get-initia
 import { useAuthContext } from 'src/contexts/auth-context';
 import Swal from 'sweetalert2';
 import { DatePicker } from '@mui/x-date-pickers';
-import * as moment from 'moment-timezone';
+import { nowMX, mxDayToWallDate, todayMXWallDate, wallDateToYMD } from 'src/utils/date-mx';
 
 const METODO_COLOR = {
   Efectivo: 'success',
@@ -40,33 +40,34 @@ const METODO_COLOR = {
   Gasto: 'error'
 };
 
-const nowMX = () => moment.tz('America/Mexico_City');
-const todayMX = () => nowMX().toDate();
+// Los rangos se calculan con el calendario de México y se pasan a los
+// DatePicker como "fechas de pared MX" (ver src/utils/date-mx.js).
+const todayMX = () => todayMXWallDate();
 
 const QUICK_FILTERS = [
   {
     label: 'Hoy',
-    range: () => { const d = nowMX(); return [d.toDate(), d.toDate()]; }
+    range: () => [todayMX(), todayMX()]
   },
   {
     label: 'Esta semana',
     range: () => {
       const d = nowMX();
-      return [d.clone().startOf('isoWeek').toDate(), d.clone().endOf('isoWeek').toDate()];
+      return [mxDayToWallDate(d.clone().startOf('isoWeek')), mxDayToWallDate(d.clone().endOf('isoWeek'))];
     }
   },
   {
     label: 'Semana anterior',
     range: () => {
       const d = nowMX().subtract(1, 'week');
-      return [d.clone().startOf('isoWeek').toDate(), d.clone().endOf('isoWeek').toDate()];
+      return [mxDayToWallDate(d.clone().startOf('isoWeek')), mxDayToWallDate(d.clone().endOf('isoWeek'))];
     }
   },
   {
     label: 'Este mes',
     range: () => {
       const d = nowMX();
-      return [d.clone().startOf('month').toDate(), d.clone().endOf('month').toDate()];
+      return [mxDayToWallDate(d.clone().startOf('month')), mxDayToWallDate(d.clone().endOf('month'))];
     }
   }
 ];
@@ -94,8 +95,8 @@ const Page = () => {
     setActiveFilter(filter.label);
   };
 
-  const desde = moment(fechaDesde).format('YYYY-MM-DD');
-  const hasta = moment(fechaHasta).format('YYYY-MM-DD');
+  const desde = wallDateToYMD(fechaDesde);
+  const hasta = wallDateToYMD(fechaHasta);
 
   const { isLoading, isError, data = {}, refetch } = useQuery(
     ['ventas-historial', desde, hasta],

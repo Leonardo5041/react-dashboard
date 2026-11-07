@@ -1,6 +1,5 @@
 import Swal from 'sweetalert2';
-import moment from 'moment';
-import 'moment/locale/es-mx';
+import { formatDateMX, formatTimeMX } from './date-mx';
 
 export const getInitials = (name = '') => name
   .replace(/\s+/, ' ')
@@ -11,8 +10,8 @@ export const getInitials = (name = '') => name
 
 export const BACKEND_URL = 'https://1k0eontip5.execute-api.us-east-1.amazonaws.com/dev/api/v1/'
 export const PRODUCTS_URL = 'https://1k0eontip5.execute-api.us-east-1.amazonaws.com/dev/api/v1/'
-//export const PRODUCTS_URL = 'http://localhost:8080/api/v1/'
-//export const BACKEND_URL = 'http://localhost:8080/api/v1/'
+// export const PRODUCTS_URL = 'http://localhost:8080/api/v1/'
+// export const BACKEND_URL = 'http://localhost:8080/api/v1/'
 
 //export const BACKEND_URL = 'https://p70ny5tlre.execute-api.us-east-1.amazonaws.com/prod/'
 // export const BACKEND_URL = 'http://localhost:2112/'
@@ -30,12 +29,7 @@ export const confirmAlert = async (message) => {
   });
 }
 
-export const formatDateTime = (dateRequest) => {
-  if (!dateRequest) return '';
-  return moment(dateRequest).utc(true).format('LL').toUpperCase();
-}
+// Siempre en hora de México (ver src/utils/date-mx.js).
+export const formatDateTime = (dateRequest) => formatDateMX(dateRequest);
 
-export const formatTime = (dateRequest) => {
-  if (!dateRequest) return '';
-  return moment(dateRequest).format('HH:mm:ss');
-}
+export const formatTime = (dateRequest) => formatTimeMX(dateRequest);

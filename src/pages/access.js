@@ -21,10 +21,15 @@ const welcomeAlert = ({access, message}) => {
 }
 const RECONNECT_BASE_MS = 1000;
 const RECONNECT_MAX_MS = 30000;
+// API Gateway cierra un WebSocket tras 10 min sin mensajes. Cada reconexión
+// escribe en Postgres ($connect/$disconnect) y despierta la base en Neon.
+// El ping no toca la base y mantiene viva la conexión.
+const PING_INTERVAL_MS = 5 * 60 * 1000;
 
 const Page = () => {
     const socket = useRef(null);
     const reconnectTimer = useRef(null);
+    const pingTimer = useRef(null);
     const attempt = useRef(0);
     const mounted = useRef(true);
     const [connected, setConnected] = useState(false);
@@ -59,6 +64,12 @@ const Page = () => {
                 if (!mounted.current) return;
                 attempt.current = 0;
                 setConnected(true);
+                clearInterval(pingTimer.current);
+                pingTimer.current = setInterval(() => {
+                    if (ws.readyState === WebSocket.OPEN) {
+                        ws.send(JSON.stringify({ action: 'ping' }));
+                    }
+                }, PING_INTERVAL_MS);
             };
 
             ws.onmessage = (event) => {
@@ -69,6 +80,7 @@ const Page = () => {
             };
 
             ws.onclose = () => {
+                clearInterval(pingTimer.current);
                 if (!mounted.current) return;
                 setConnected(false);
                 const delay = Math.min(RECONNECT_BASE_MS * 2 ** attempt.current, RECONNECT_MAX_MS);
@@ -86,6 +98,7 @@ const Page = () => {
         return () => {
             mounted.current = false;
             clearTimeout(reconnectTimer.current);
+            clearInterval(pingTimer.current);
             clearInterval(timer);
             socket.current?.close();
         };

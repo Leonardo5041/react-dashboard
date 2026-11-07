@@ -15,7 +15,8 @@ import api from 'src/utils/api';
 import {useRouter} from 'next/router';
 import {BACKEND_URL} from 'src/utils/get-initials';
 import {DatePicker} from '@mui/x-date-pickers';
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
+import { toMXWallDate, fromMXWallDate } from 'src/utils/date-mx';
 
 export const CustomerMembership = ({user, readOnly = false}) => {
     const router = useRouter();
@@ -25,8 +26,10 @@ export const CustomerMembership = ({user, readOnly = false}) => {
         end_date: '',
         price: ''
     });
-    const [startDate, setStartDate] = useState(new Date(user?.subscription?.start_date));
-    const [endDate, setEndDate] = useState(new Date(user?.subscription?.end_date));
+    // startDate/endDate son "fechas de pared MX" (ver src/utils/date-mx.js):
+    // el DatePicker siempre muestra el día de México aunque la PC tenga otra zona.
+    const [startDate, setStartDate] = useState(toMXWallDate(user?.subscription?.start_date));
+    const [endDate, setEndDate] = useState(toMXWallDate(user?.subscription?.end_date));
     const [memberships, setMemberships] = useState([]);
 
     const getMemberships = async () => {
@@ -47,9 +50,8 @@ export const CustomerMembership = ({user, readOnly = false}) => {
             subscription: user?.subscription?.id,
             end_date: user?.subscription?.end_date
         });
-        const endDate = moment.tz(user?.subscription?.end_date, 'America/Mexico_City').toDate();
-        setEndDate(endDate);
-        setStartDate(moment.tz(user?.subscription?.start_date, 'America/Mexico_City').toDate());
+        setEndDate(toMXWallDate(user?.subscription?.end_date));
+        setStartDate(toMXWallDate(user?.subscription?.start_date));
         getSubscription(user?.subscription?.id);
     }, [user]);
 
@@ -84,9 +86,9 @@ export const CustomerMembership = ({user, readOnly = false}) => {
         });
         const selectedMembership = memberships.find((membership) => membership.id
             === event.target.value);
-        setStartDate(moment.tz('America/Mexico_City').toDate());
-        const endDateNumber = moment.tz('America/Mexico_City').add(selectedMembership?.duration, 'days').toDate();
-        setEndDate(endDateNumber);
+        const start = toMXWallDate(new Date());
+        setStartDate(start);
+        setEndDate(moment(start).add(selectedMembership?.duration, 'days').toDate());
     };
 
     const handleSubmit = async (event) => {
@@ -94,8 +96,8 @@ export const CustomerMembership = ({user, readOnly = false}) => {
         const request = {
             client_id: user.id,
             membership_id: values.membership_id,
-            start_date: startDate,
-            end_date: endDate
+            start_date: fromMXWallDate(startDate),
+            end_date: fromMXWallDate(endDate)
         };
         if (!values.subscription) {
             const createSubscription = await api.post('subscriptions', request);
@@ -124,11 +126,12 @@ export const CustomerMembership = ({user, readOnly = false}) => {
     };
 
     const handleStartDateChange = (newValue) => {
-        setStartDate(moment.tz(newValue, 'America/Mexico_City').toDate());
+        // newValue ya es "fecha de pared MX" (viene del DatePicker)
+        setStartDate(newValue);
+        if (!newValue) return;
         const selectedMembership = memberships.find((membership) => membership.id
             === values.membership_id);
-        const endDateNumber = moment.tz(newValue, 'America/Mexico_City').add(selectedMembership?.duration, 'days').toDate();
-        setEndDate(endDateNumber);
+        setEndDate(moment(newValue).add(selectedMembership?.duration, 'days').toDate());
     };
     return (
         <form

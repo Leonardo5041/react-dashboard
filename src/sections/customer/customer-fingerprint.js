@@ -13,6 +13,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { SOCKET_URL } from '../../socket';
 
 const REGISTER_TIMEOUT_MS = 90000;
+const SAVE_RESPONSE_TIMEOUT_MS = 20000;
 const RECONNECT_DELAY_MS = 3000;
 
 export const CustomerFingerPrint = ({ user }) => {
@@ -94,6 +95,13 @@ export const CustomerFingerPrint = ({ user }) => {
         return;
       }
       awaitingSave.current = true;
+      // The card was read: from now on the wait is for the backend, not for a swipe.
+      clearTimeout(registerTimer.current);
+      registerTimer.current = setTimeout(() => {
+        if (awaitingSave.current) {
+          failRegistration('El servidor no respondió. Revise si la tarjeta quedó asignada antes de intentar de nuevo.');
+        }
+      }, SAVE_RESPONSE_TIMEOUT_MS);
       socket.current.send(JSON.stringify({
         action: 'save-card',
         user_id: pendingUserId.current,
@@ -147,11 +155,24 @@ export const CustomerFingerPrint = ({ user }) => {
       mounted.current = false;
       clearTimeout(reconnectTimer.current);
       clearTimeout(registerTimer.current);
+      // Don't leave the waiting modal open on the next page.
+      if (pendingUserId.current) {
+        Swal.close();
+      }
       pendingUserId.current = null;
       awaitingSave.current = false;
       socket.current?.close();
     };
   }, [failRegistration]);
+
+  // Next keeps this component mounted when navigating between customers:
+  // abort a registration started for a different customer.
+  useEffect(() => {
+    if (pendingUserId.current && pendingUserId.current !== user?.id) {
+      clearPending();
+      Swal.close();
+    }
+  }, [user?.id, clearPending]);
 
   const handleSubmit = async (userId) => {
     const confirmResponse = await Swal.fire({
