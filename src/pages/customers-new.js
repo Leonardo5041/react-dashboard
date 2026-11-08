@@ -2,30 +2,40 @@ import Head from 'next/head';
 import { useRouter } from 'next/navigation';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
-import { Box, Button, Stack, TextField, Typography } from '@mui/material';
+import {
+  Box,
+  Button,
+  Checkbox,
+  FormControlLabel,
+  Stack,
+  TextField,
+  Typography
+} from '@mui/material';
 import { Layout as DashboardLayout } from 'src/layouts/dashboard/layout';
 import api from 'src/utils/api';
-import { BACKEND_URL } from 'src/utils/get-initials';
+import {
+  MENSAJE_CELULAR_INVALIDO,
+  celularValido,
+  mensajeErrorApi,
+  normalizarCelular
+} from 'src/utils/phone';
 
 const Page = () => {
   const router = useRouter();
 
   const registerClient = async (data) => {
-    const { email, name, phone } = data;
+    const { email, name, phone, sms_opt_in } = data;
+    const celular = normalizarCelular(phone);
     const request = {
       email: (email !== '') ? email.trim() : null,
       name: name.trim(),
-      phone: (phone !== '') ? phone.trim() : null,
-    }
-    try {
-      const { data, status } = await api.post('clients', request);
-      if (status === 201) {
-        router.push('/customers');
-      } else {
-        console.error(data);
-      }
-    } catch (err) {
-      console.error(err);
+      phone: celular ? celular : null,
+      sms_opt_in: Boolean(celular) && sms_opt_in
+    };
+    // Los errores (p. ej. celular inválido) llegan al onSubmit para mostrarse.
+    const { status } = await api.post('clients', request);
+    if (status === 201) {
+      router.push('/customers');
     }
   };
 
@@ -34,6 +44,7 @@ const Page = () => {
       email: '',
       name: '',
       phone: '',
+      sms_opt_in: false,
       submit: null
     },
     validationSchema: Yup.object({
@@ -48,18 +59,20 @@ const Page = () => {
         .required('El nombre es requerido'),
       phone: Yup
         .string()
-        .max(15, 'El número de teléfono debe tener maximo 15 caracteres')
+        .test('celular', MENSAJE_CELULAR_INVALIDO, (v) => normalizarCelular(v) !== null)
     }),
     onSubmit: async (values, helpers) => {
       try {
         await registerClient(values);
       } catch (err) {
         helpers.setStatus({ success: false });
-        helpers.setErrors({ submit: err.message });
+        helpers.setErrors({ submit: mensajeErrorApi(err, err.message) });
         helpers.setSubmitting(false);
       }
     }
   });
+
+  const tieneCelular = celularValido(formik.values.phone);
 
   return (
     <>
@@ -112,13 +125,29 @@ const Page = () => {
                 <TextField
                   error={!!(formik.touched.phone && formik.errors.phone)}
                   fullWidth
-                  helperText={formik.touched.phone && formik.errors.phone}
-                  label="Telefono (Opcional)"
+                  helperText={(formik.touched.phone && formik.errors.phone)
+                    || 'Opcional. Necesario para recordatorios por SMS'}
+                  label="Celular (10 dígitos)"
                   name="phone"
                   onBlur={formik.handleBlur}
-                  onChange={formik.handleChange}
-                  type="text"
-                  value={formik.values.password}
+                  onChange={(e) => {
+                    formik.handleChange(e);
+                    if (!celularValido(e.target.value)) formik.setFieldValue('sms_opt_in', false);
+                  }}
+                  type="tel"
+                  inputProps={{ inputMode: 'tel' }}
+                  value={formik.values.phone}
+                />
+                <FormControlLabel
+                  control={(
+                    <Checkbox
+                      name="sms_opt_in"
+                      checked={formik.values.sms_opt_in}
+                      onChange={formik.handleChange}
+                      disabled={!tieneCelular}
+                    />
+                  )}
+                  label="Acepta recibir recordatorios de pago por SMS"
                 />
                 <TextField
                   error={!!(formik.touched.email && formik.errors.email)}
@@ -147,6 +176,7 @@ const Page = () => {
                 sx={{ mt: 3 }}
                 type="submit"
                 variant="contained"
+                disabled={formik.isSubmitting}
               >
                 Guardar
               </Button>

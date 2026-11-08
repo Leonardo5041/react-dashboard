@@ -6,14 +6,23 @@ import {
     CardActions,
     CardContent,
     CardHeader,
+    Checkbox,
     Divider,
+    FormControlLabel,
     TextField,
     Unstable_Grid2 as Grid
 } from '@mui/material';
 import { useRouter } from 'next/router';
+import Swal from 'sweetalert2';
 import { confirmAlert } from 'src/utils/get-initials';
 import api from 'src/utils/api';
 import { useAuthContext } from 'src/contexts/auth-context';
+import {
+    MENSAJE_CELULAR_INVALIDO,
+    celularValido,
+    mensajeErrorApi,
+    normalizarCelular
+} from 'src/utils/phone';
 
 const states = [
     {
@@ -36,6 +45,7 @@ export const CustomerProfileDetails = ({ user }) => {
         phone: '',
     });
     const [active, setActive] = useState(user?.active);
+    const [smsOptIn, setSmsOptIn] = useState(Boolean(user?.sms_opt_in));
 
     useEffect(() => {
         setValues({
@@ -44,6 +54,7 @@ export const CustomerProfileDetails = ({ user }) => {
             phone: user?.phone,
         });
         setActive(user?.active)
+        setSmsOptIn(Boolean(user?.sms_opt_in));
     }, [user]);
 
     const handleChange = (event) => {
@@ -51,7 +62,15 @@ export const CustomerProfileDetails = ({ user }) => {
             ...values,
             [event.target.name]: event.target.value
         });
+        // Sin celular válido no se pueden aceptar SMS.
+        if (event.target.name === 'phone' && !celularValido(event.target.value)) {
+            setSmsOptIn(false);
+        }
     };
+
+    const celularNormalizado = normalizarCelular(values.phone);
+    const celularConError = celularNormalizado === null;
+    const tieneCelular = celularValido(values.phone);
 
     const handleActiveChange = useCallback(
       () => {
@@ -64,18 +83,24 @@ export const CustomerProfileDetails = ({ user }) => {
 
     const handleSubmit = async (event) => {
         event.preventDefault();
+        if (celularConError) {
+            Swal.fire({ icon: 'warning', title: 'Celular inválido', text: MENSAJE_CELULAR_INVALIDO });
+            return;
+        }
         const request = {
             name: values.name,
             email: values.email,
-            phone: values.phone,
-            active: active
+            // null = no se toca; '' = se borra; si no, 10 dígitos
+            phone: values.phone == null ? null : celularNormalizado,
+            active: active,
+            sms_opt_in: tieneCelular && smsOptIn
         };
         try {
-            const { data } = await api.patch(`clients/${user.id}`, request);
-            if (data?.affected > 0) router.reload();
+            const { status } = await api.patch(`clients/${user.id}`, request);
+            if (status === 200) router.reload();
         }
         catch (error) {
-            console.log(error);
+            Swal.fire({ icon: 'error', title: 'No se pudo actualizar', text: mensajeErrorApi(error) });
         }
     }
 
@@ -142,10 +167,13 @@ export const CustomerProfileDetails = ({ user }) => {
                             >
                                 <TextField
                                     fullWidth
-                                    label="Numero de Telefono"
+                                    label="Celular (10 dígitos)"
                                     name="phone"
                                     onChange={handleChange}
-                                    type="text"
+                                    type="tel"
+                                    inputProps={{ inputMode: 'tel' }}
+                                    error={celularConError}
+                                    helperText={celularConError ? MENSAJE_CELULAR_INVALIDO : 'Necesario para recordatorios por SMS'}
                                     value={values.phone || ''}
                                 />
                             </Grid>
@@ -172,6 +200,18 @@ export const CustomerProfileDetails = ({ user }) => {
                                         </option>
                                     ))}
                                 </TextField>
+                            </Grid>
+                            <Grid xs={12}>
+                                <FormControlLabel
+                                    control={(
+                                        <Checkbox
+                                            checked={tieneCelular && smsOptIn}
+                                            onChange={(e) => setSmsOptIn(e.target.checked)}
+                                            disabled={!tieneCelular}
+                                        />
+                                    )}
+                                    label="Acepta recibir recordatorios de pago por SMS"
+                                />
                             </Grid>
                         </Grid>
                     </Box>

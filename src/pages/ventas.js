@@ -6,6 +6,7 @@ import {
   Button,
   Card,
   CardContent,
+  Checkbox,
   Chip,
   CircularProgress,
   Container,
@@ -15,6 +16,7 @@ import {
   DialogTitle,
   Divider,
   FormControl,
+  FormControlLabel,
   IconButton,
   InputAdornment,
   InputLabel,
@@ -50,6 +52,19 @@ import api from 'src/utils/api';
 import { PRODUCTS_URL } from 'src/utils/get-initials';
 import { useAuthContext } from 'src/contexts/auth-context';
 import Swal from 'sweetalert2';
+import {
+  MENSAJE_CELULAR_INVALIDO,
+  celularValido,
+  mensajeErrorApi,
+  normalizarCelular
+} from 'src/utils/phone';
+
+// Por qué un cliente no recibiría el recordatorio por SMS (null = sí lo recibe).
+const motivoSinSms = (client) => {
+  if (!celularValido(client?.phone)) return 'Sin celular';
+  if (!client?.sms_opt_in) return 'No ha aceptado SMS';
+  return null;
+};
 
 const METODOS = ['Efectivo', 'Tarjeta', 'Transferencia', 'Gasto'];
 
@@ -283,6 +298,53 @@ const Page = () => {
       Swal.fire({ icon: 'error', title: 'Error', text: msg });
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  // ─── Celular / SMS desde el diálogo de cliente (sin salir del POS) ─────────
+  const [telInput, setTelInput] = useState('');
+  const [optInInput, setOptInInput] = useState(false);
+  const [guardandoTel, setGuardandoTel] = useState(false);
+  const [msgTel, setMsgTel] = useState(null); // { tipo: 'success' | 'error', texto }
+  const [telTocado, setTelTocado] = useState(false); // mostrar error solo tras intentar guardar o salir del campo
+
+  useEffect(() => {
+    setTelInput(selectedClient?.phone || '');
+    // Consentimiento explícito: recepción pregunta y marca la casilla solo si el socio acepta.
+    setOptInInput(false);
+    setMsgTel(null);
+    setTelTocado(false);
+  }, [selectedClient?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const guardarCelular = async () => {
+    const celular = normalizarCelular(telInput);
+    if (!celular) {
+      setTelTocado(true); // el error se muestra en el campo
+      return;
+    }
+    setGuardandoTel(true);
+    setMsgTel(null);
+    try {
+      const { data } = await api.patch(`clients/${selectedClient.id}`, {
+        phone: celular,
+        sms_opt_in: optInInput
+      });
+      const actualizado = { ...selectedClient, ...data };
+      setSelectedClient(actualizado);
+      // Refleja el cambio en la lista sin volver a pedirla al servidor.
+      queryClient.setQueryData(['clients-pos'], (lista = []) =>
+        lista.map((c) => (c.id === actualizado.id ? { ...c, ...actualizado } : c))
+      );
+      setMsgTel({
+        tipo: 'success',
+        texto: actualizado.sms_opt_in
+          ? 'Celular guardado. Recibirá el recordatorio por SMS.'
+          : 'Celular guardado (sin recordatorios por SMS).'
+      });
+    } catch (err) {
+      setMsgTel({ tipo: 'error', texto: mensajeErrorApi(err) });
+    } finally {
+      setGuardandoTel(false);
     }
   };
 
@@ -605,6 +667,50 @@ const Page = () => {
                   </ListItemButton>
                 ))}
               </List>
+            )}
+            {selectedClient && motivoSinSms(selectedClient) && (
+              <Stack spacing={1}>
+                <Alert severity="warning" sx={{ py: 0.25 }}>
+                  {motivoSinSms(selectedClient)}: no recibirá recordatorios por SMS (opcional).
+                </Alert>
+                <Stack direction="row" spacing={1} alignItems="flex-start">
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="Celular"
+                    placeholder="55 1234 5678"
+                    type="tel"
+                    inputProps={{ inputMode: 'tel' }}
+                    value={telInput}
+                    onChange={(e) => { setTelInput(e.target.value); setMsgTel(null); }}
+                    onBlur={() => { if (telInput) setTelTocado(true); }}
+                    error={telTocado && normalizarCelular(telInput) === null}
+                    helperText={telTocado && normalizarCelular(telInput) === null ? MENSAJE_CELULAR_INVALIDO : null}
+                  />
+                  <Button
+                    variant="contained"
+                    onClick={guardarCelular}
+                    disabled={guardandoTel}
+                    startIcon={guardandoTel ? <CircularProgress size={14} color="inherit" /> : null}
+                    sx={{ whiteSpace: 'nowrap', minWidth: 96, height: 40 }}
+                  >
+                    Guardar
+                  </Button>
+                </Stack>
+                <FormControlLabel
+                  control={(
+                    <Checkbox
+                      size="small"
+                      checked={optInInput}
+                      onChange={(e) => setOptInInput(e.target.checked)}
+                    />
+                  )}
+                  label="Acepta recordatorios por SMS"
+                />
+              </Stack>
+            )}
+            {msgTel && (
+              <Alert severity={msgTel.tipo}>{msgTel.texto}</Alert>
             )}
           </Stack>
         </DialogContent>
