@@ -54,9 +54,11 @@ import { useAuthContext } from 'src/contexts/auth-context';
 import Swal from 'sweetalert2';
 import {
   MENSAJE_CELULAR_INVALIDO,
+  PROPS_INPUT_CELULAR,
   celularValido,
   mensajeErrorApi,
-  normalizarCelular
+  normalizarCelular,
+  soloDigitosCelular
 } from 'src/utils/phone';
 
 // Por qué un cliente no recibiría el recordatorio por SMS (null = sí lo recibe).
@@ -309,7 +311,7 @@ const Page = () => {
   const [telTocado, setTelTocado] = useState(false); // mostrar error solo tras intentar guardar o salir del campo
 
   useEffect(() => {
-    setTelInput(selectedClient?.phone || '');
+    setTelInput(soloDigitosCelular(selectedClient?.phone));
     // Consentimiento explícito: recepción pregunta y marca la casilla solo si el socio acepta.
     setOptInInput(false);
     setMsgTel(null);
@@ -678,11 +680,11 @@ const Page = () => {
                     fullWidth
                     size="small"
                     label="Celular"
-                    placeholder="55 1234 5678"
+                    placeholder="5512345678"
                     type="tel"
-                    inputProps={{ inputMode: 'tel' }}
+                    inputProps={PROPS_INPUT_CELULAR}
                     value={telInput}
-                    onChange={(e) => { setTelInput(e.target.value); setMsgTel(null); }}
+                    onChange={(e) => { setTelInput(soloDigitosCelular(e.target.value)); setMsgTel(null); }}
                     onBlur={() => { if (telInput) setTelTocado(true); }}
                     error={telTocado && normalizarCelular(telInput) === null}
                     helperText={telTocado && normalizarCelular(telInput) === null ? MENSAJE_CELULAR_INVALIDO : null}

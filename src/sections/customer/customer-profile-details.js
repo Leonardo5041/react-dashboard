@@ -19,9 +19,11 @@ import api from 'src/utils/api';
 import { useAuthContext } from 'src/contexts/auth-context';
 import {
     MENSAJE_CELULAR_INVALIDO,
+    PROPS_INPUT_CELULAR,
     celularValido,
     mensajeErrorApi,
-    normalizarCelular
+    normalizarCelular,
+    soloDigitosCelular
 } from 'src/utils/phone';
 
 const states = [
@@ -51,19 +53,22 @@ export const CustomerProfileDetails = ({ user }) => {
         setValues({
             name: user?.name,
             email: user?.email,
-            phone: user?.phone,
+            phone: user?.phone == null ? user?.phone : soloDigitosCelular(user.phone),
         });
         setActive(user?.active)
         setSmsOptIn(Boolean(user?.sms_opt_in));
     }, [user]);
 
     const handleChange = (event) => {
+        const valor = event.target.name === 'phone'
+            ? soloDigitosCelular(event.target.value)
+            : event.target.value;
         setValues({
             ...values,
-            [event.target.name]: event.target.value
+            [event.target.name]: valor
         });
         // Sin celular válido no se pueden aceptar SMS.
-        if (event.target.name === 'phone' && !celularValido(event.target.value)) {
+        if (event.target.name === 'phone' && !celularValido(valor)) {
             setSmsOptIn(false);
         }
     };
@@ -171,7 +176,7 @@ export const CustomerProfileDetails = ({ user }) => {
                                     name="phone"
                                     onChange={handleChange}
                                     type="tel"
-                                    inputProps={{ inputMode: 'tel' }}
+                                    inputProps={PROPS_INPUT_CELULAR}
                                     error={celularConError}
                                     helperText={celularConError ? MENSAJE_CELULAR_INVALIDO : 'Necesario para recordatorios por SMS'}
                                     value={values.phone || ''}

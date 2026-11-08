@@ -15,9 +15,11 @@ import { Layout as DashboardLayout } from 'src/layouts/dashboard/layout';
 import api from 'src/utils/api';
 import {
   MENSAJE_CELULAR_INVALIDO,
+  PROPS_INPUT_CELULAR,
   celularValido,
   mensajeErrorApi,
-  normalizarCelular
+  normalizarCelular,
+  soloDigitosCelular
 } from 'src/utils/phone';
 
 const Page = () => {
@@ -131,11 +133,12 @@ const Page = () => {
                   name="phone"
                   onBlur={formik.handleBlur}
                   onChange={(e) => {
-                    formik.handleChange(e);
-                    if (!celularValido(e.target.value)) formik.setFieldValue('sms_opt_in', false);
+                    const digitos = soloDigitosCelular(e.target.value);
+                    formik.setFieldValue('phone', digitos);
+                    if (!celularValido(digitos)) formik.setFieldValue('sms_opt_in', false);
                   }}
                   type="tel"
-                  inputProps={{ inputMode: 'tel' }}
+                  inputProps={PROPS_INPUT_CELULAR}
                   value={formik.values.phone}
                 />
                 <FormControlLabel
